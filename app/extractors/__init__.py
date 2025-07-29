@@ -37,6 +37,18 @@ class ExtractorFactory:
             self._register_extractor(DOCXExtractor())
         except ImportError as e:
             print(f"Warnung: DOCXExtractor konnte nicht geladen werden: {e}")
+        
+        try:
+            from app.extractors.image_extractor import ImageExtractor
+            self._register_extractor(ImageExtractor())
+        except ImportError as e:
+            print(f"Warnung: ImageExtractor konnte nicht geladen werden: {e}")
+        
+        try:
+            from app.extractors.media_extractor import MediaExtractor
+            self._register_extractor(MediaExtractor())
+        except ImportError as e:
+            print(f"Warnung: MediaExtractor konnte nicht geladen werden: {e}")
     
     def _register_extractor(self, extractor: BaseExtractor) -> None:
         """Registriert einen Extraktor."""

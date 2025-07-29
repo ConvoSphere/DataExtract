@@ -1,0 +1,163 @@
+version: '3.8'
+
+services:
+  # Redis für Job-Queue
+  redis:
+    image: redis:7-alpine
+    container_name: file_extractor_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # API-Server
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: file_extractor_api
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DEBUG=false
+      - MAX_FILE_SIZE=157286400  # 150MB
+      - ENABLE_ASYNC_PROCESSING=true
+      - MAX_CONCURRENT_EXTRACTIONS=10
+      - WORKER_PROCESSES=4
+    volumes:
+      - temp_files:/tmp/file_extractor
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Celery-Worker für asynchrone Verarbeitung
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: file_extractor_worker
+    command: celery -A app.workers.tasks worker --loglevel=info --concurrency=4
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DEBUG=false
+      - MAX_FILE_SIZE=157286400  # 150MB
+      - ENABLE_ASYNC_PROCESSING=true
+    volumes:
+      - temp_files:/tmp/file_extractor
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      replicas: 2  # Mehrere Worker-Instanzen für Skalierung
+
+  # Celery-Beat für geplante Tasks (Cleanup, etc.)
+  beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: file_extractor_beat
+    command: celery -A app.workers.tasks beat --loglevel=info
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DEBUG=false
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Flower für Celery-Monitoring (optional)
+  flower:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: file_extractor_flower
+    command: celery -A app.workers.tasks flower --port=5555
+    ports:
+      - "5555:5555"
+    environment:
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Nginx Reverse Proxy (für Produktion)
+  nginx:
+    image: nginx:alpine
+    container_name: file_extractor_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro  # SSL-Zertifikate
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # Prometheus für Metriken (optional)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: file_extractor_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+
+  # Grafana für Visualisierung (optional)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: file_extractor_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+    driver: local
+  temp_files:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  default:
+    name: file_extractor_network
