@@ -1,6 +1,6 @@
 # Universal File Extractor API
 
-Eine einheitliche API für die Extraktion von Inhalten aus verschiedenen Dateiformaten, entwickelt mit FastAPI, **docling** für erweiterte Datenextraktion, **UV** als Package Manager und **Ruff** für Code-Qualität.
+Eine einheitliche API für die Extraktion von Inhalten aus verschiedenen Dateiformaten, entwickelt mit FastAPI und modernen Python-Bibliotheken.
 
 ## 🚀 Features
 
@@ -17,7 +17,6 @@ Eine einheitliche API für die Extraktion von Inhalten aus verschiedenen Dateifo
 ### Kernfunktionen
 
 - **Einheitliche API**: Einheitliche Schnittstelle für alle Dateiformate
-- **Docling Integration**: Erweiterte Datenextraktion mit docling
 - **Asynchrone Verarbeitung**: Parallele Verarbeitung großer Dateien
 - **OCR-Unterstützung**: Texterkennung in Bildern und PDFs
 - **Medien-Extraktion**: Audio/Video-Transkription
@@ -32,39 +31,22 @@ Eine einheitliche API für die Extraktion von Inhalten aus verschiedenen Dateifo
 - **Verarbeitungspipeline**: Asynchrone Job-Queue mit Redis/Celery
 - **Monitoring**: Prometheus/Grafana Integration
 - **Container-basiert**: Einfaches Cloud-Deployment
-- **UV Package Manager**: Schnelle Dependency-Verwaltung
-- **Ruff Linting**: Moderne Code-Qualität
 
 ## 🛠️ Schnellstart
-
-### Voraussetzungen
-
-- Python 3.8+
-- UV (Package Manager)
-- Docker (optional)
 
 ### Installation
 
 ```bash
-# UV installieren (falls nicht vorhanden)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
 # Repository klonen
 git clone https://github.com/yourusername/universal-file-extractor-api
 cd universal-file-extractor-api
-
-# Mit UV installieren
-uv sync
-
-# Pre-commit Hooks installieren
-uv pip install pre-commit
-pre-commit install
 
 # Mit Docker (empfohlen)
 docker-compose up -d
 
 # Oder lokal
-uv run uvicorn app.main:app --reload
+poetry install
+poetry run uvicorn app.main:app --reload
 ```
 
 ### Erste Schritte
@@ -124,16 +106,12 @@ print(f"Status: {status['status']}, Fortschritt: {status['progress']}%")
   "extracted_text": {
     "content": "Extrahierter Text...",
     "word_count": 1500,
-    "character_count": 8500,
-    "language": "de",
-    "ocr_used": false
+    "character_count": 8500
   },
   "structured_data": {
     "tables": [...],
     "headings": [...],
-    "images": [...],
-    "entities": {...},
-    "sentiment": {...}
+    "images": [...]
   },
   "extraction_time": 2.5
 }
@@ -156,23 +134,11 @@ print(f"Status: {status['status']}, Fortschritt: {status['progress']}%")
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │  File Extractors│    │  Monitoring     │    │  Storage        │
 │                 │    │                 │    │                 │
-│ • Docling       │    │ • Prometheus    │    │ • Temp Files    │
-│ • PDF Extractor │    │ • Grafana       │    │ • Results       │
+│ • PDF Extractor │    │ • Prometheus    │    │ • Temp Files    │
+│ • DOCX Extractor│    │ • Grafana       │    │ • Results       │
 │ • Image Extractor│   │ • Health Checks │    │ • Logs          │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
-
-### Docling Integration
-
-Die API nutzt **docling** für erweiterte Datenextraktion:
-
-- **Text-Extraktion**: Intelligente Texterkennung
-- **Metadaten**: Umfassende Datei-Informationen
-- **Struktur-Analyse**: Tabellen, Überschriften, Listen
-- **Entitäten-Erkennung**: Personen, Orte, Organisationen
-- **Sentiment-Analyse**: Stimmungsanalyse
-- **Zusammenfassung**: Automatische Dokumentenzusammenfassung
-- **Spracherkennung**: Automatische Spracherkennung
 
 ### Deployment-Optionen
 
@@ -217,70 +183,9 @@ REDIS_URL=redis://localhost:6379
 MAX_CONCURRENT_EXTRACTIONS=10
 WORKER_PROCESSES=4
 
-# Docling-Konfiguration
-ENABLE_DOCLING=true
-ENABLE_ADVANCED_ANALYSIS=true
-DOCLING_TIMEOUT=300
-
 # OCR-Konfiguration
 EXTRACT_IMAGE_TEXT=true
 EXTRACT_AUDIO_TRANSCRIPT=false
-```
-
-## 🛠️ Entwicklung
-
-### UV Package Manager
-
-```bash
-# Dependencies installieren
-uv sync
-
-# Neue Dependency hinzufügen
-uv add package-name
-
-# Dev-Dependency hinzufügen
-uv add --dev package-name
-
-# Dependency entfernen
-uv remove package-name
-
-# Dependencies aktualisieren
-uv lock --upgrade
-```
-
-### Ruff Linting
-
-```bash
-# Code formatieren
-uv run ruff format app/ tests/
-
-# Linting mit Auto-Fix
-uv run ruff check --fix app/ tests/
-
-# Import-Sortierung
-uv run ruff check --select I app/ tests/
-
-# Vollständiger Check
-uv run ruff check app/ tests/
-```
-
-### Makefile-Befehle
-
-```bash
-# Entwicklungssetup
-make setup-dev
-
-# Code-Qualität
-make quality
-
-# Tests ausführen
-make test
-
-# Dokumentation starten
-make docs
-
-# Docker-Deployment
-make setup-prod
 ```
 
 ## 📚 Dokumentation
@@ -288,7 +193,6 @@ make setup-prod
 - **[API-Dokumentation](api/overview.md)**: Vollständige API-Referenz
 - **[Entwickler-Guide](development/installation.md)**: Installation und Setup
 - **[Extraktoren](extractors/overview.md)**: Details zu allen Extraktoren
-- **[Docling Integration](extractors/docling.md)**: Docling-spezifische Features
 - **[Deployment](deployment/docker.md)**: Cloud-Deployment-Anleitung
 - **[Beispiele](examples/quickstart.md)**: Code-Beispiele in verschiedenen Sprachen
 
@@ -300,26 +204,19 @@ Wir freuen uns über Beiträge! Bitte lesen Sie unsere [Contributing Guidelines]
 
 ```bash
 # Entwicklungsumgebung einrichten
-make setup-dev
-
-# Code-Qualität prüfen
-make quality
+poetry install --with dev
+pre-commit install
 
 # Tests ausführen
-make test
+pytest
+
+# Code formatieren
+black app/
+isort app/
 
 # Dokumentation bauen
-make docs-build
+mkdocs serve
 ```
-
-### Pre-commit Hooks
-
-Das Projekt nutzt Pre-commit Hooks für automatische Code-Qualität:
-
-- **Ruff**: Linting und Formatierung
-- **MyPy**: Type Checking
-- **Pre-commit Hooks**: Allgemeine Checks
-- **UV Sync**: Dependency-Synchronisation
 
 ## 📄 Lizenz
 
@@ -333,4 +230,4 @@ Dieses Projekt steht unter der MIT-Lizenz. Siehe [LICENSE](LICENSE) für Details
 
 ---
 
-**Entwickelt mit ❤️, FastAPI, docling, UV und Ruff**
+**Entwickelt mit ❤️ und FastAPI**

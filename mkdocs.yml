@@ -1,0 +1,130 @@
+site_name: Universal File Extractor API
+site_description: Eine einheitliche API für die Extraktion von Inhalten aus verschiedenen Dateiformaten
+site_author: Your Name
+site_url: https://your-domain.com
+
+repo_name: universal-file-extractor-api
+repo_url: https://github.com/yourusername/universal-file-extractor-api
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  language: de
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/toggle-switch
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/toggle-switch-off-outline
+        name: Switch to light mode
+
+markdown_extensions:
+  - admonition
+  - codehilite
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.superfences
+  - pymdownx.tabbed
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.smartsymbols
+  - attr_list
+  - md_in_html
+  - def_list
+  - footnotes
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [app]
+          options:
+            show_source: true
+            show_root_heading: true
+            show_category_heading: true
+            show_signature_annotations: true
+            show_bases: true
+            show_submodules: true
+            heading_level: 2
+            members_order: source
+            docstring_style: google
+            preload_modules: true
+
+nav:
+  - Home: index.md
+  - API-Dokumentation:
+    - Übersicht: api/overview.md
+    - Endpoints: api/endpoints.md
+    - Authentifizierung: api/authentication.md
+    - Fehlerbehandlung: api/errors.md
+  - Entwickler-Guide:
+    - Installation: development/installation.md
+    - Konfiguration: development/configuration.md
+    - Deployment: development/deployment.md
+    - Testing: development/testing.md
+  - Extraktoren:
+    - Übersicht: extractors/overview.md
+    - Text-Extraktor: extractors/text.md
+    - PDF-Extraktor: extractors/pdf.md
+    - DOCX-Extraktor: extractors/docx.md
+    - Bild-Extraktor: extractors/image.md
+    - Medien-Extraktor: extractors/media.md
+    - Neue Extraktoren: extractors/custom.md
+  - Asynchrone Verarbeitung:
+    - Übersicht: async/overview.md
+    - Job-Management: async/jobs.md
+    - Callbacks: async/callbacks.md
+    - Monitoring: async/monitoring.md
+  - Deployment:
+    - Docker: deployment/docker.md
+    - Cloud: deployment/cloud.md
+    - Kubernetes: deployment/kubernetes.md
+    - Monitoring: deployment/monitoring.md
+  - Beispiele:
+    - Schnellstart: examples/quickstart.md
+    - Python: examples/python.md
+    - JavaScript: examples/javascript.md
+    - cURL: examples/curl.md
+  - Troubleshooting:
+    - Häufige Probleme: troubleshooting/common.md
+    - Performance: troubleshooting/performance.md
+    - Debugging: troubleshooting/debugging.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/yourusername/universal-file-extractor-api
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/yourusername
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
