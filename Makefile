@@ -94,6 +94,26 @@ docker-up:
 	@echo "Building and starting Docker Compose..."
 	docker-compose up --build -d
 
+# Test-Umgebung starten
+test-env:
+	@echo "Starting test environment with monitoring..."
+	docker-compose -f docker-compose.test.yml up --build -d
+
+# Test-Umgebung stoppen
+test-env-stop:
+	@echo "Stopping test environment..."
+	docker-compose -f docker-compose.test.yml down
+
+# Test-Umgebung Logs
+test-env-logs:
+	@echo "Showing test environment logs..."
+	docker-compose -f docker-compose.test.yml logs -f
+
+# Test-Umgebung neu starten
+test-env-restart:
+	@echo "Restarting test environment..."
+	docker-compose -f docker-compose.test.yml restart
+
 # Kubernetes Deployment
 k8s-deploy:
 	@echo "Deploying to Kubernetes..."

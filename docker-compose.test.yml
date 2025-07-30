@@ -1,0 +1,229 @@
+version: '3.8'
+
+services:
+  # Redis für Job-Queue
+  redis:
+    image: redis:7-alpine
+    container_name: file_extractor_redis_test
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_test:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    command: redis-server --appendonly yes
+
+  # Jaeger für Distributed Tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: file_extractor_jaeger_test
+    ports:
+      - "16686:16686"  # UI
+      - "6831:6831/udp"  # Agent
+      - "14268:14268"  # Collector
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    restart: unless-stopped
+
+  # API-Server (Development)
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: file_extractor_api_test
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+      - ENABLE_OPENTELEMETRY=true
+      - JAEGER_HOST=jaeger
+      - JAEGER_PORT=6831
+      - ENABLE_REQUEST_LOGGING=true
+      - ENABLE_EXTRACTION_LOGGING=true
+      - MAX_FILE_SIZE=157286400  # 150MB
+      - ENABLE_ASYNC_PROCESSING=true
+      - MAX_CONCURRENT_EXTRACTIONS=10
+      - WORKER_PROCESSES=4
+    volumes:
+      - temp_files_test:/app/temp
+      - ./logs:/app/logs
+      - .:/app  # Für Development Hot-Reload
+    depends_on:
+      redis:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Celery-Worker für asynchrone Verarbeitung
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: worker
+    container_name: file_extractor_worker_test
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+      - ENABLE_OPENTELEMETRY=true
+      - JAEGER_HOST=jaeger
+      - JAEGER_PORT=6831
+      - ENABLE_REQUEST_LOGGING=true
+      - ENABLE_EXTRACTION_LOGGING=true
+      - MAX_FILE_SIZE=157286400  # 150MB
+      - ENABLE_ASYNC_PROCESSING=true
+    volumes:
+      - temp_files_test:/app/temp
+      - ./logs:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    restart: unless-stopped
+    deploy:
+      replicas: 2
+
+  # Celery-Beat für geplante Tasks
+  beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: beat
+    container_name: file_extractor_beat_test
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DEBUG=true
+      - LOG_LEVEL=INFO
+      - ENABLE_OPENTELEMETRY=true
+      - JAEGER_HOST=jaeger
+      - JAEGER_PORT=6831
+    depends_on:
+      redis:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    restart: unless-stopped
+
+  # Flower für Celery-Monitoring
+  flower:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: file_extractor_flower_test
+    command: uv run celery -A app.workers.tasks flower --port=5555 --broker=redis://redis:6379
+    ports:
+      - "5555:5555"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DEBUG=true
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Prometheus für Metriken
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: file_extractor_prometheus_test
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data_test:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+
+  # Grafana für Visualisierung
+  grafana:
+    image: grafana/grafana:latest
+    container_name: file_extractor_grafana_test
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=admin
+    volumes:
+      - grafana_data_test:/var/lib/grafana
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  # Elasticsearch für Logs (optional)
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: file_extractor_elasticsearch_test
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data_test:/usr/share/elasticsearch/data
+    restart: unless-stopped
+
+  # Kibana für Log-Visualisierung (optional)
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: file_extractor_kibana_test
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+
+  # Filebeat für Log-Sammlung (optional)
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.11.0
+    container_name: file_extractor_filebeat_test
+    user: root
+    volumes:
+      - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - ./logs:/var/log/app:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+
+volumes:
+  redis_data_test:
+    driver: local
+  temp_files_test:
+    driver: local
+  prometheus_data_test:
+    driver: local
+  grafana_data_test:
+    driver: local
+  elasticsearch_data_test:
+    driver: local
+
+networks:
+  default:
+    name: file_extractor_test_network

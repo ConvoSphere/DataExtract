@@ -14,10 +14,20 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from app.api import api_router
 from app.core.config import settings
 from app.core.exceptions import FileExtractorException, convert_to_http_exception
+from app.core.logging import (
+    get_logger,
+    log_request_info,
+    setup_opentelemetry,
+    setup_structured_logging,
+)
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
-    """Middleware für Request-Logging."""
+    """Middleware für strukturiertes Request-Logging."""
+
+    def __init__(self, app):
+        super().__init__(app)
+        self.logger = get_logger("request_middleware")
 
     async def dispatch(self, request: Request, call_next):
         start_time = time.time()
@@ -31,9 +41,19 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         # Response-Header für Verarbeitungszeit hinzufügen
         response.headers['X-Process-Time'] = str(process_time)
 
-        # Logging (in Produktion durch echtes Logging ersetzen)
-        if settings.debug:
-            print(f'{request.method} {request.url.path} - {response.status_code} - {process_time:.3f}s')
+        # Strukturiertes Logging
+        if settings.enable_request_logging:
+            log_request_info(
+                self.logger,
+                {
+                    "method": request.method,
+                    "url": str(request.url),
+                    "status_code": response.status_code,
+                    "duration": process_time,
+                    "user_agent": request.headers.get("user-agent"),
+                    "client_ip": request.client.host if request.client else None,
+                }
+            )
 
         return response
 
@@ -42,14 +62,26 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 async def lifespan(app: FastAPI):
     """Lifecycle-Management für die FastAPI-Anwendung."""
     # Startup
-    print(f'🚀 Starte {settings.app_name} v{settings.app_version}')
-    print(f'📁 Unterstützte Formate: {len(settings.allowed_extensions)}')
-    print(f'⚙️  Debug-Modus: {settings.debug}')
+    logger = get_logger("startup")
+    
+    # Logging und OpenTelemetry initialisieren
+    setup_structured_logging()
+    if settings.enable_opentelemetry:
+        setup_opentelemetry()
+    
+    logger.info(
+        "Application starting",
+        app_name=settings.app_name,
+        version=settings.app_version,
+        supported_formats_count=len(settings.allowed_extensions),
+        debug_mode=settings.debug,
+        environment=settings.environment,
+    )
 
     yield
 
     # Shutdown
-    print('🛑 Beende Anwendung...')
+    logger.info("Application shutting down")
 
 
 # FastAPI-Anwendung erstellen
