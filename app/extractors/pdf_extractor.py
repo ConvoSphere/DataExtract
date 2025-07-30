@@ -70,8 +70,12 @@ class PDFExtractor(BaseExtractor):
                 # Seitenanzahl
                 metadata.page_count = len(pdf_reader.pages)
 
-        except Exception:
-            pass
+        except Exception as e:
+            self.logger.warning(
+                "PDF metadata extraction failed",
+                filename=file_path.name,
+                error=str(e),
+            )
 
         return metadata
 
@@ -134,8 +138,12 @@ class PDFExtractor(BaseExtractor):
                     except Exception:
                         continue
 
-        except Exception:
-            pass
+        except Exception as e:
+            self.logger.warning(
+                "PDF structured data extraction failed",
+                filename=file_path.name,
+                error=str(e),
+            )
 
         return StructuredData(
             tables=tables,

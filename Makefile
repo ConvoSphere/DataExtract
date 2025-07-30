@@ -34,6 +34,26 @@ test:
 	@echo "Running tests..."
 	uv run pytest tests/ -v --cov=app --cov-report=html --cov-report=term-missing
 
+# Unit-Tests ausführen
+test-unit:
+	@echo "Running unit tests..."
+	uv run pytest tests/ -v -m "not integration and not performance" --cov=app --cov-report=term-missing
+
+# Integration-Tests ausführen
+test-integration:
+	@echo "Running integration tests..."
+	uv run pytest tests/test_integration.py -v --cov=app --cov-report=term-missing
+
+# Performance-Tests ausführen
+test-performance:
+	@echo "Running performance tests..."
+	uv run pytest tests/test_performance.py -v
+
+# Alle Tests mit Coverage
+test-all:
+	@echo "Running all tests with coverage..."
+	uv run pytest tests/ -v --cov=app --cov-report=html --cov-report=term-missing --cov-report=xml
+
 # Code-Linting mit Ruff
 lint:
 	@echo "Running Ruff linter..."
