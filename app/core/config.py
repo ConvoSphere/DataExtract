@@ -113,6 +113,28 @@ class Settings(BaseSettings):
         description="Audio-Transkription aktivieren"
     )
     
+    # Docling-Konfiguration
+    enable_docling: bool = Field(
+        default=True,
+        description="Docling für erweiterte Extraktion aktivieren"
+    )
+    enable_advanced_analysis: bool = Field(
+        default=True,
+        description="Erweiterte Analyse (Entitäten, Sentiment, Zusammenfassung) aktivieren"
+    )
+    docling_timeout: int = Field(
+        default=300,  # 5 Minuten
+        description="Timeout für Docling-Verarbeitung in Sekunden"
+    )
+    docling_cache_enabled: bool = Field(
+        default=True,
+        description="Docling-Cache aktivieren"
+    )
+    docling_cache_ttl: int = Field(
+        default=3600,  # 1 Stunde
+        description="Docling-Cache TTL in Sekunden"
+    )
+    
     # CORS Konfiguration
     cors_origins: List[str] = Field(
         default=["*"],

@@ -8,8 +8,8 @@ help:
 	@echo "  install      - Dependencies installieren"
 	@echo "  dev          - Entwicklungsserver starten"
 	@echo "  test         - Tests ausführen"
-	@echo "  lint         - Code-Linting"
-	@echo "  format       - Code formatieren"
+	@echo "  lint         - Code-Linting mit Ruff"
+	@echo "  format       - Code formatieren mit Ruff"
 	@echo "  docs         - Dokumentation starten"
 	@echo "  build        - Produktions-Build"
 	@echo "  docker-build - Docker-Image bauen"
@@ -19,48 +19,50 @@ help:
 
 # Dependencies installieren
 install:
-	@echo "Installing dependencies..."
-	poetry install
-	poetry run pre-commit install
+	@echo "Installing dependencies with UV..."
+	uv sync
+	uv pip install pre-commit
+	pre-commit install
 
 # Entwicklungsserver
 dev:
 	@echo "Starting development server..."
-	poetry run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+	uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 # Tests ausführen
 test:
 	@echo "Running tests..."
-	poetry run pytest tests/ -v --cov=app --cov-report=html --cov-report=term-missing
+	uv run pytest tests/ -v --cov=app --cov-report=html --cov-report=term-missing
 
-# Code-Linting
+# Code-Linting mit Ruff
 lint:
-	@echo "Running linters..."
-	poetry run flake8 app/ tests/
-	poetry run mypy app/
-	poetry run black --check app/ tests/
-	poetry run isort --check-only app/ tests/
+	@echo "Running Ruff linter..."
+	uv run ruff check app/ tests/
+	uv run ruff check --select I app/ tests/  # Import sorting
 
-# Code formatieren
+# Code formatieren mit Ruff
 format:
-	@echo "Formatting code..."
-	poetry run black app/ tests/
-	poetry run isort app/ tests/
+	@echo "Formatting code with Ruff..."
+	uv run ruff format app/ tests/
+	uv run ruff check --fix app/ tests/
+
+# Code-Linting und Formatierung
+lint-fix: format lint
 
 # Dokumentation
 docs:
 	@echo "Starting documentation server..."
-	poetry run mkdocs serve
+	uv run mkdocs serve
 
 # Dokumentation bauen
 docs-build:
 	@echo "Building documentation..."
-	poetry run mkdocs build
+	uv run mkdocs build
 
 # Produktions-Build
 build:
 	@echo "Building production version..."
-	poetry build
+	uv build
 
 # Docker-Image bauen
 docker-build:
@@ -118,6 +120,7 @@ clean:
 	rm -rf .coverage
 	rm -rf dist/
 	rm -rf build/
+	rm -rf .ruff_cache/
 
 # Vollständige Bereinigung (inkl. Docker)
 clean-all: clean
@@ -162,13 +165,13 @@ create-sample:
 # Performance-Test
 perf-test:
 	@echo "Running performance test..."
-	poetry run python -m pytest tests/test_performance.py -v
+	uv run pytest tests/test_performance.py -v
 
 # Security-Check
 security-check:
 	@echo "Running security checks..."
-	poetry run bandit -r app/
-	poetry run safety check
+	uv run ruff check --select S app/  # Security rules
+	uv run safety check
 
 # Backup erstellen
 backup:
@@ -181,15 +184,16 @@ backup:
 		--exclude='htmlcov' \
 		--exclude='dist' \
 		--exclude='build' \
+		--exclude='.ruff_cache' \
 		.
 
 # Release erstellen
 release:
 	@echo "Creating release..."
-	poetry version patch
+	uv version patch
 	git add pyproject.toml
-	git commit -m "Bump version to $(poetry version -s)"
-	git tag v$(poetry version -s)
+	git commit -m "Bump version to $(uv version)"
+	git tag v$(uv version)
 	git push origin main --tags
 
 # Development-Setup
@@ -206,3 +210,57 @@ setup-prod: docker-build docker-run
 	@echo "Monitoring at http://localhost:5555 (Flower)"
 	@echo "Metrics at http://localhost:9090 (Prometheus)"
 	@echo "Dashboard at http://localhost:3000 (Grafana)"
+
+# UV-spezifische Befehle
+uv-sync:
+	@echo "Syncing dependencies with UV..."
+	uv sync
+
+uv-add:
+	@echo "Adding dependency with UV..."
+	@read -p "Enter package name: " package; \
+	uv add $$package
+
+uv-add-dev:
+	@echo "Adding dev dependency with UV..."
+	@read -p "Enter package name: " package; \
+	uv add --dev $$package
+
+uv-remove:
+	@echo "Removing dependency with UV..."
+	@read -p "Enter package name: " package; \
+	uv remove $$package
+
+uv-update:
+	@echo "Updating dependencies with UV..."
+	uv lock --upgrade
+
+# Ruff-spezifische Befehle
+ruff-check:
+	@echo "Running Ruff checks..."
+	uv run ruff check app/ tests/
+
+ruff-format:
+	@echo "Running Ruff formatter..."
+	uv run ruff format app/ tests/
+
+ruff-fix:
+	@echo "Running Ruff with auto-fix..."
+	uv run ruff check --fix app/ tests/
+
+# Docling-spezifische Befehle
+install-docling:
+	@echo "Installing docling..."
+	uv add docling
+
+test-docling:
+	@echo "Testing docling integration..."
+	uv run python -c "import docling; print('Docling version:', docling.__version__)"
+
+# Code-Qualität
+quality: lint-fix test
+	@echo "Code quality check complete!"
+
+# Vollständiger Check
+check: quality security-check
+	@echo "Full check complete!"
