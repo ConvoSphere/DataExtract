@@ -2,39 +2,37 @@
 Docling-basierter Extraktor für erweiterte Datenextraktion.
 """
 
-import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 try:
     import docling
     from docling import Document, Pipeline
     from docling.enrichments import (
-        TextEnrichment,
-        MetadataEnrichment,
-        StructureEnrichment,
-        TableEnrichment,
-        ImageEnrichment,
-        LinkEnrichment,
         EntityEnrichment,
-        SentimentEnrichment,
+        ImageEnrichment,
         LanguageEnrichment,
+        LinkEnrichment,
+        MetadataEnrichment,
+        SentimentEnrichment,
+        StructureEnrichment,
         SummaryEnrichment,
+        TableEnrichment,
+        TextEnrichment,
     )
     DOCLING_AVAILABLE = True
 except ImportError:
     DOCLING_AVAILABLE = False
 
+from app.core.config import settings
 from app.extractors.base import BaseExtractor
 from app.models.schemas import (
+    ExtractedImage,
     ExtractedText,
     FileMetadata,
     StructuredData,
-    ExtractedImage,
-    ExtractedMedia,
 )
-from app.core.config import settings
 
 
 class DoclingExtractor(BaseExtractor):
@@ -44,7 +42,7 @@ class DoclingExtractor(BaseExtractor):
         super().__init__()
         if not DOCLING_AVAILABLE:
             raise ImportError(
-                'docling ist nicht installiert. Installieren Sie es mit: uv add docling'
+                'docling ist nicht installiert. Installieren Sie es mit: uv add docling',
             )
 
         # Unterstützte Formate (docling kann viele Formate verarbeiten)
@@ -114,7 +112,7 @@ class DoclingExtractor(BaseExtractor):
         try:
             # Docling Document erstellen
             doc = Document.from_file(str(file_path))
-            
+
             # Metadaten-Extraktion
             metadata_enrichment = MetadataEnrichment()
             enriched_doc = metadata_enrichment.enrich(doc)
@@ -122,7 +120,7 @@ class DoclingExtractor(BaseExtractor):
             # Docling-Metadaten extrahieren
             if hasattr(enriched_doc, 'metadata'):
                 doc_metadata = enriched_doc.metadata
-                
+
                 if 'title' in doc_metadata:
                     metadata.title = str(doc_metadata['title'])
                 if 'author' in doc_metadata:
@@ -134,25 +132,25 @@ class DoclingExtractor(BaseExtractor):
                         metadata.keywords = [str(k) for k in doc_metadata['keywords']]
                     else:
                         metadata.keywords = [str(doc_metadata['keywords'])]
-                
+
                 # Seitenanzahl
                 if 'page_count' in doc_metadata:
                     metadata.page_count = int(doc_metadata['page_count'])
-                
+
                 # Dimensionen (für Bilder)
                 if 'width' in doc_metadata and 'height' in doc_metadata:
                     metadata.dimensions = {
                         'width': int(doc_metadata['width']),
-                        'height': int(doc_metadata['height'])
+                        'height': int(doc_metadata['height']),
                     }
-                
+
                 # Dauer (für Medien)
                 if 'duration' in doc_metadata:
                     metadata.duration = float(doc_metadata['duration'])
 
         except Exception as e:
             # Fallback zu Basis-Metadaten
-            print(f"Docling Metadaten-Extraktion fehlgeschlagen: {e}")
+            print(f'Docling Metadaten-Extraktion fehlgeschlagen: {e}')
 
         return metadata
 
@@ -166,7 +164,7 @@ class DoclingExtractor(BaseExtractor):
         try:
             # Docling Document erstellen
             doc = Document.from_file(str(file_path))
-            
+
             # Text-Extraktion
             text_enrichment = TextEnrichment()
             enriched_doc = text_enrichment.enrich(doc)
@@ -180,20 +178,20 @@ class DoclingExtractor(BaseExtractor):
             # Sprache erkennen
             language_enrichment = LanguageEnrichment()
             lang_doc = language_enrichment.enrich(enriched_doc)
-            
+
             if hasattr(lang_doc, 'language'):
                 language = str(lang_doc.language)
-            
+
             # OCR-Status prüfen
             if hasattr(enriched_doc, 'ocr_used'):
                 ocr_used = bool(enriched_doc.ocr_used)
-            
+
             # Konfidenz
             if hasattr(enriched_doc, 'confidence'):
                 confidence = float(enriched_doc.confidence)
 
         except Exception as e:
-            print(f"Docling Text-Extraktion fehlgeschlagen: {e}")
+            print(f'Docling Text-Extraktion fehlgeschlagen: {e}')
 
         # Statistiken berechnen
         word_count = len(content.split()) if content else 0
@@ -220,7 +218,7 @@ class DoclingExtractor(BaseExtractor):
         try:
             # Docling Document erstellen
             doc = Document.from_file(str(file_path))
-            
+
             # Struktur-Extraktion
             structure_enrichment = StructureEnrichment()
             enriched_doc = structure_enrichment.enrich(doc)
@@ -228,7 +226,7 @@ class DoclingExtractor(BaseExtractor):
             # Tabellen extrahieren
             table_enrichment = TableEnrichment()
             table_doc = table_enrichment.enrich(enriched_doc)
-            
+
             if hasattr(table_doc, 'tables') and table_doc.tables:
                 for table in table_doc.tables:
                     table_data = {
@@ -252,14 +250,14 @@ class DoclingExtractor(BaseExtractor):
             # Links extrahieren
             link_enrichment = LinkEnrichment()
             link_doc = link_enrichment.enrich(enriched_doc)
-            
+
             if hasattr(link_doc, 'links') and link_doc.links:
                 links = [str(link) for link in link_doc.links]
 
             # Bilder extrahieren
             image_enrichment = ImageEnrichment()
             image_doc = image_enrichment.enrich(enriched_doc)
-            
+
             if hasattr(image_doc, 'images') and image_doc.images:
                 for i, img in enumerate(image_doc.images):
                     image_data = ExtractedImage(
@@ -282,7 +280,7 @@ class DoclingExtractor(BaseExtractor):
                         lists.append([str(item) for item in list_data])
 
         except Exception as e:
-            print(f"Docling Struktur-Extraktion fehlgeschlagen: {e}")
+            print(f'Docling Struktur-Extraktion fehlgeschlagen: {e}')
 
         return StructuredData(
             tables=tables,
@@ -292,45 +290,45 @@ class DoclingExtractor(BaseExtractor):
             lists=lists,
         )
 
-    def extract_entities(self, file_path: Path) -> Dict[str, Any]:
+    def extract_entities(self, file_path: Path) -> dict[str, Any]:
         """Extrahiert Entitäten mit docling."""
         entities = {}
-        
+
         try:
             doc = Document.from_file(str(file_path))
-            
+
             # Text extrahieren
             text_enrichment = TextEnrichment()
             enriched_doc = text_enrichment.enrich(doc)
-            
+
             # Entitäten extrahieren
             entity_enrichment = EntityEnrichment()
             entity_doc = entity_enrichment.enrich(enriched_doc)
-            
+
             if hasattr(entity_doc, 'entities') and entity_doc.entities:
                 for entity_type, entity_list in entity_doc.entities.items():
                     entities[entity_type] = [str(entity) for entity in entity_list]
-                    
+
         except Exception as e:
-            print(f"Docling Entitäten-Extraktion fehlgeschlagen: {e}")
-            
+            print(f'Docling Entitäten-Extraktion fehlgeschlagen: {e}')
+
         return entities
 
-    def extract_sentiment(self, file_path: Path) -> Dict[str, Any]:
+    def extract_sentiment(self, file_path: Path) -> dict[str, Any]:
         """Extrahiert Sentiment-Analyse mit docling."""
         sentiment_data = {}
-        
+
         try:
             doc = Document.from_file(str(file_path))
-            
+
             # Text extrahieren
             text_enrichment = TextEnrichment()
             enriched_doc = text_enrichment.enrich(doc)
-            
+
             # Sentiment-Analyse
             sentiment_enrichment = SentimentEnrichment()
             sentiment_doc = sentiment_enrichment.enrich(enriched_doc)
-            
+
             if hasattr(sentiment_doc, 'sentiment'):
                 sentiment = sentiment_doc.sentiment
                 sentiment_data = {
@@ -339,39 +337,39 @@ class DoclingExtractor(BaseExtractor):
                     'positive_phrases': sentiment.get('positive', []),
                     'negative_phrases': sentiment.get('negative', []),
                 }
-                
+
         except Exception as e:
-            print(f"Docling Sentiment-Analyse fehlgeschlagen: {e}")
-            
+            print(f'Docling Sentiment-Analyse fehlgeschlagen: {e}')
+
         return sentiment_data
 
     def extract_summary(self, file_path: Path) -> str:
         """Extrahiert Zusammenfassung mit docling."""
         summary = ''
-        
+
         try:
             doc = Document.from_file(str(file_path))
-            
+
             # Text extrahieren
             text_enrichment = TextEnrichment()
             enriched_doc = text_enrichment.enrich(doc)
-            
+
             # Zusammenfassung erstellen
             summary_enrichment = SummaryEnrichment()
             summary_doc = summary_enrichment.enrich(enriched_doc)
-            
+
             if hasattr(summary_doc, 'summary'):
                 summary = str(summary_doc.summary)
-                
+
         except Exception as e:
-            print(f"Docling Zusammenfassung fehlgeschlagen: {e}")
-            
+            print(f'Docling Zusammenfassung fehlgeschlagen: {e}')
+
         return summary
 
     def _create_pipeline(self) -> Pipeline:
         """Erstellt eine docling Pipeline."""
         pipeline = Pipeline()
-        
+
         # Basis-Enrichments hinzufügen
         pipeline.add_enrichment(TextEnrichment())
         pipeline.add_enrichment(MetadataEnrichment())
@@ -380,13 +378,13 @@ class DoclingExtractor(BaseExtractor):
         pipeline.add_enrichment(ImageEnrichment())
         pipeline.add_enrichment(LinkEnrichment())
         pipeline.add_enrichment(LanguageEnrichment())
-        
+
         # Optionale Enrichments
         if settings.enable_advanced_analysis:
             pipeline.add_enrichment(EntityEnrichment())
             pipeline.add_enrichment(SentimentEnrichment())
             pipeline.add_enrichment(SummaryEnrichment())
-        
+
         return pipeline
 
     def _get_mime_type(self, file_path: Path) -> str:
@@ -423,7 +421,7 @@ class DoclingExtractor(BaseExtractor):
         }
         return mime_types.get(extension, 'application/octet-stream')
 
-    def get_supported_formats(self) -> Dict[str, Any]:
+    def get_supported_formats(self) -> dict[str, Any]:
         """Gibt Informationen über unterstützte Formate zurück."""
         return {
             'extensions': self.supported_extensions,

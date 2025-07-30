@@ -3,373 +3,374 @@ Pydantic-Schemas für die Universal File Extractor API.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
 class ExtractionRequest(BaseModel):
     """Request-Modell für Datei-Extraktion."""
-    
+
     include_metadata: bool = Field(
         default=True,
-        description="Metadaten der Datei einschließen"
+        description='Metadaten der Datei einschließen',
     )
     include_text: bool = Field(
         default=True,
-        description="Text-Inhalt extrahieren"
+        description='Text-Inhalt extrahieren',
     )
     include_structure: bool = Field(
         default=False,
-        description="Strukturierte Daten extrahieren"
+        description='Strukturierte Daten extrahieren',
     )
     include_images: bool = Field(
         default=False,
-        description="Bilder extrahieren"
+        description='Bilder extrahieren',
     )
     include_media: bool = Field(
         default=False,
-        description="Medien extrahieren"
+        description='Medien extrahieren',
     )
-    language: Optional[str] = Field(
+    language: str | None = Field(
         default=None,
-        description="Sprache für die Extraktion (ISO 639-1)"
+        description='Sprache für die Extraktion (ISO 639-1)',
     )
     async_processing: bool = Field(
         default=False,
-        description="Asynchrone Verarbeitung verwenden"
+        description='Asynchrone Verarbeitung verwenden',
     )
 
 
 class FileMetadata(BaseModel):
     """Metadaten einer Datei."""
-    
-    filename: str = Field(description="Name der Datei")
-    file_size: int = Field(description="Größe der Datei in Bytes")
-    file_type: str = Field(description="MIME-Type der Datei")
-    file_extension: str = Field(description="Dateiendung")
-    created_date: Optional[datetime] = Field(
+
+    filename: str = Field(description='Name der Datei')
+    file_size: int = Field(description='Größe der Datei in Bytes')
+    file_type: str = Field(description='MIME-Type der Datei')
+    file_extension: str = Field(description='Dateiendung')
+    created_date: datetime | None = Field(
         default=None,
-        description="Erstellungsdatum"
+        description='Erstellungsdatum',
     )
-    modified_date: Optional[datetime] = Field(
+    modified_date: datetime | None = Field(
         default=None,
-        description="Änderungsdatum"
+        description='Änderungsdatum',
     )
-    page_count: Optional[int] = Field(
+    page_count: int | None = Field(
         default=None,
-        description="Anzahl der Seiten (für Dokumente)"
+        description='Anzahl der Seiten (für Dokumente)',
     )
-    author: Optional[str] = Field(
+    author: str | None = Field(
         default=None,
-        description="Autor des Dokuments"
+        description='Autor des Dokuments',
     )
-    title: Optional[str] = Field(
+    title: str | None = Field(
         default=None,
-        description="Titel des Dokuments"
+        description='Titel des Dokuments',
     )
-    subject: Optional[str] = Field(
+    subject: str | None = Field(
         default=None,
-        description="Betreff des Dokuments"
+        description='Betreff des Dokuments',
     )
-    keywords: Optional[List[str]] = Field(
+    keywords: list[str] | None = Field(
         default=None,
-        description="Schlüsselwörter"
+        description='Schlüsselwörter',
     )
     # Neue Felder für erweiterte Metadaten
-    dimensions: Optional[Dict[str, int]] = Field(
+    dimensions: dict[str, int] | None = Field(
         default=None,
-        description="Dimensionen (für Bilder/Medien)"
+        description='Dimensionen (für Bilder/Medien)',
     )
-    duration: Optional[float] = Field(
+    duration: float | None = Field(
         default=None,
-        description="Dauer in Sekunden (für Medien)"
+        description='Dauer in Sekunden (für Medien)',
     )
-    bitrate: Optional[int] = Field(
+    bitrate: int | None = Field(
         default=None,
-        description="Bitrate (für Medien)"
+        description='Bitrate (für Medien)',
     )
-    resolution: Optional[str] = Field(
+    resolution: str | None = Field(
         default=None,
-        description="Auflösung (für Bilder/Medien)"
+        description='Auflösung (für Bilder/Medien)',
     )
-    color_space: Optional[str] = Field(
+    color_space: str | None = Field(
         default=None,
-        description="Farbraum (für Bilder)"
+        description='Farbraum (für Bilder)',
     )
 
 
 class ExtractedText(BaseModel):
     """Extrahierter Text-Inhalt."""
-    
-    content: str = Field(description="Extrahierter Text")
-    language: Optional[str] = Field(
+
+    content: str = Field(description='Extrahierter Text')
+    language: str | None = Field(
         default=None,
-        description="Erkannte Sprache"
+        description='Erkannte Sprache',
     )
-    confidence: Optional[float] = Field(
+    confidence: float | None = Field(
         default=None,
-        description="Konfidenz der Texterkennung (0-1)"
+        description='Konfidenz der Texterkennung (0-1)',
     )
-    word_count: Optional[int] = Field(
+    word_count: int | None = Field(
         default=None,
-        description="Anzahl der Wörter"
+        description='Anzahl der Wörter',
     )
-    character_count: Optional[int] = Field(
+    character_count: int | None = Field(
         default=None,
-        description="Anzahl der Zeichen"
+        description='Anzahl der Zeichen',
     )
     # Neue Felder für OCR
     ocr_used: bool = Field(
         default=False,
-        description="OCR wurde verwendet"
+        description='OCR wurde verwendet',
     )
-    ocr_confidence: Optional[float] = Field(
+    ocr_confidence: float | None = Field(
         default=None,
-        description="OCR-Konfidenz (0-1)"
+        description='OCR-Konfidenz (0-1)',
     )
 
 
 class ExtractedImage(BaseModel):
     """Extrahierte Bild-Informationen."""
-    
-    image_index: int = Field(description="Index des Bildes")
-    image_type: str = Field(description="Typ des Bildes (jpeg, png, etc.)")
-    dimensions: Dict[str, int] = Field(description="Dimensionen (width, height)")
-    file_size: int = Field(description="Größe in Bytes")
-    extracted_text: Optional[str] = Field(
+
+    image_index: int = Field(description='Index des Bildes')
+    image_type: str = Field(description='Typ des Bildes (jpeg, png, etc.)')
+    dimensions: dict[str, int] = Field(description='Dimensionen (width, height)')
+    file_size: int = Field(description='Größe in Bytes')
+    extracted_text: str | None = Field(
         default=None,
-        description="Extrahierter Text aus dem Bild (OCR)"
+        description='Extrahierter Text aus dem Bild (OCR)',
     )
-    ocr_confidence: Optional[float] = Field(
+    ocr_confidence: float | None = Field(
         default=None,
-        description="OCR-Konfidenz"
+        description='OCR-Konfidenz',
     )
-    color_palette: Optional[List[str]] = Field(
+    color_palette: list[str] | None = Field(
         default=None,
-        description="Dominante Farben"
+        description='Dominante Farben',
     )
 
 
 class ExtractedMedia(BaseModel):
     """Extrahierte Medien-Informationen."""
-    
-    media_type: str = Field(description="Typ (video, audio)")
-    format: str = Field(description="Format (mp4, mp3, etc.)")
-    duration: float = Field(description="Dauer in Sekunden")
-    bitrate: Optional[int] = Field(
+
+    media_type: str = Field(description='Typ (video, audio)')
+    format: str = Field(description='Format (mp4, mp3, etc.)')
+    duration: float = Field(description='Dauer in Sekunden')
+    bitrate: int | None = Field(
         default=None,
-        description="Bitrate"
+        description='Bitrate',
     )
-    resolution: Optional[str] = Field(
+    resolution: str | None = Field(
         default=None,
-        description="Auflösung (für Video)"
+        description='Auflösung (für Video)',
     )
-    fps: Optional[float] = Field(
+    fps: float | None = Field(
         default=None,
-        description="Frames pro Sekunde (für Video)"
+        description='Frames pro Sekunde (für Video)',
     )
-    channels: Optional[int] = Field(
+    channels: int | None = Field(
         default=None,
-        description="Anzahl Kanäle (für Audio)"
+        description='Anzahl Kanäle (für Audio)',
     )
-    sample_rate: Optional[int] = Field(
+    sample_rate: int | None = Field(
         default=None,
-        description="Sample Rate (für Audio)"
+        description='Sample Rate (für Audio)',
     )
-    transcript: Optional[str] = Field(
+    transcript: str | None = Field(
         default=None,
-        description="Audio-Transkript"
+        description='Audio-Transkript',
     )
 
 
 class StructuredData(BaseModel):
     """Strukturierte Daten aus der Datei."""
-    
-    tables: Optional[List[Dict[str, Any]]] = Field(
+
+    tables: list[dict[str, Any]] | None = Field(
         default=None,
-        description="Extrahierte Tabellen"
+        description='Extrahierte Tabellen',
     )
-    lists: Optional[List[List[str]]] = Field(
+    lists: list[list[str]] | None = Field(
         default=None,
-        description="Extrahierte Listen"
+        description='Extrahierte Listen',
     )
-    headings: Optional[List[Dict[str, Any]]] = Field(
+    headings: list[dict[str, Any]] | None = Field(
         default=None,
-        description="Überschriften mit Hierarchie"
+        description='Überschriften mit Hierarchie',
     )
-    links: Optional[List[str]] = Field(
+    links: list[str] | None = Field(
         default=None,
-        description="Extrahierte Links"
+        description='Extrahierte Links',
     )
-    images: Optional[List[ExtractedImage]] = Field(
+    images: list[ExtractedImage] | None = Field(
         default=None,
-        description="Extrahierte Bilder"
+        description='Extrahierte Bilder',
     )
-    media: Optional[List[ExtractedMedia]] = Field(
+    media: list[ExtractedMedia] | None = Field(
         default=None,
-        description="Extrahierte Medien"
+        description='Extrahierte Medien',
     )
     # Neue Felder für erweiterte Strukturen
-    slides: Optional[List[Dict[str, Any]]] = Field(
+    slides: list[dict[str, Any]] | None = Field(
         default=None,
-        description="Präsentationsfolien"
+        description='Präsentationsfolien',
     )
-    charts: Optional[List[Dict[str, Any]]] = Field(
+    charts: list[dict[str, Any]] | None = Field(
         default=None,
-        description="Diagramme und Charts"
+        description='Diagramme und Charts',
     )
-    forms: Optional[List[Dict[str, Any]]] = Field(
+    forms: list[dict[str, Any]] | None = Field(
         default=None,
-        description="Formulare"
+        description='Formulare',
     )
 
 
 class ExtractionResult(BaseModel):
     """Ergebnis einer Datei-Extraktion."""
-    
-    success: bool = Field(description="Erfolg der Extraktion")
-    file_metadata: FileMetadata = Field(description="Datei-Metadaten")
-    extracted_text: Optional[ExtractedText] = Field(
+
+    success: bool = Field(description='Erfolg der Extraktion')
+    file_metadata: FileMetadata = Field(description='Datei-Metadaten')
+    extracted_text: ExtractedText | None = Field(
         default=None,
-        description="Extrahierter Text"
+        description='Extrahierter Text',
     )
-    structured_data: Optional[StructuredData] = Field(
+    structured_data: StructuredData | None = Field(
         default=None,
-        description="Strukturierte Daten"
+        description='Strukturierte Daten',
     )
-    extraction_time: float = Field(description="Extraktionszeit in Sekunden")
-    warnings: List[str] = Field(
+    extraction_time: float = Field(description='Extraktionszeit in Sekunden')
+    warnings: list[str] = Field(
         default_factory=list,
-        description="Warnungen während der Extraktion"
+        description='Warnungen während der Extraktion',
     )
-    errors: List[str] = Field(
+    errors: list[str] = Field(
         default_factory=list,
-        description="Fehler während der Extraktion"
+        description='Fehler während der Extraktion',
     )
     # Neue Felder für asynchrone Verarbeitung
-    job_id: Optional[str] = Field(
+    job_id: str | None = Field(
         default=None,
-        description="Job-ID für asynchrone Verarbeitung"
+        description='Job-ID für asynchrone Verarbeitung',
     )
-    processing_status: Optional[str] = Field(
+    processing_status: str | None = Field(
         default=None,
-        description="Verarbeitungsstatus"
+        description='Verarbeitungsstatus',
     )
 
 
 class AsyncExtractionRequest(BaseModel):
     """Request für asynchrone Extraktion."""
-    
-    callback_url: Optional[str] = Field(
+
+    callback_url: str | None = Field(
         default=None,
-        description="Callback-URL für Benachrichtigungen"
+        description='Callback-URL für Benachrichtigungen',
     )
     priority: str = Field(
-        default="normal",
-        description="Priorität (low, normal, high)"
+        default='normal',
+        description='Priorität (low, normal, high)',
     )
     retention_hours: int = Field(
         default=24,
-        description="Aufbewahrungszeit in Stunden"
+        description='Aufbewahrungszeit in Stunden',
     )
 
 
 class AsyncExtractionResponse(BaseModel):
     """Response für asynchrone Extraktion."""
-    
-    job_id: str = Field(description="Job-ID")
-    status: str = Field(description="Status (queued, processing, completed, failed)")
-    estimated_completion: Optional[datetime] = Field(
+
+    job_id: str = Field(description='Job-ID')
+    status: str = Field(description='Status (queued, processing, completed, failed)')
+    estimated_completion: datetime | None = Field(
         default=None,
-        description="Geschätzte Fertigstellung"
+        description='Geschätzte Fertigstellung',
     )
-    progress: Optional[float] = Field(
+    progress: float | None = Field(
         default=None,
-        description="Fortschritt (0-100)"
+        description='Fortschritt (0-100)',
     )
-    result_url: Optional[str] = Field(
+    result_url: str | None = Field(
         default=None,
-        description="URL zum Abrufen des Ergebnisses"
+        description='URL zum Abrufen des Ergebnisses',
     )
 
 
 class JobStatus(BaseModel):
     """Status eines asynchronen Jobs."""
-    
-    job_id: str = Field(description="Job-ID")
-    status: str = Field(description="Status")
-    created_at: datetime = Field(description="Erstellungszeit")
-    started_at: Optional[datetime] = Field(
+
+    job_id: str = Field(description='Job-ID')
+    status: str = Field(description='Status')
+    created_at: datetime = Field(description='Erstellungszeit')
+    started_at: datetime | None = Field(
         default=None,
-        description="Startzeit"
+        description='Startzeit',
     )
-    completed_at: Optional[datetime] = Field(
+    completed_at: datetime | None = Field(
         default=None,
-        description="Fertigstellungszeit"
+        description='Fertigstellungszeit',
     )
-    progress: float = Field(description="Fortschritt (0-100)")
-    result: Optional[ExtractionResult] = Field(
+    progress: float = Field(description='Fortschritt (0-100)')
+    result: ExtractionResult | None = Field(
         default=None,
-        description="Extraktionsergebnis"
+        description='Extraktionsergebnis',
     )
-    error: Optional[str] = Field(
+    error: str | None = Field(
         default=None,
-        description="Fehlermeldung"
+        description='Fehlermeldung',
     )
 
 
 class SupportedFormat(BaseModel):
     """Informationen über ein unterstütztes Dateiformat."""
-    
-    extension: str = Field(description="Dateiendung")
-    mime_type: str = Field(description="MIME-Type")
-    description: str = Field(description="Beschreibung des Formats")
-    features: List[str] = Field(description="Unterstützte Features")
-    max_size: Optional[int] = Field(
+
+    extension: str = Field(description='Dateiendung')
+    mime_type: str = Field(description='MIME-Type')
+    description: str = Field(description='Beschreibung des Formats')
+    features: list[str] = Field(description='Unterstützte Features')
+    max_size: int | None = Field(
         default=None,
-        description="Maximale Dateigröße in Bytes"
+        description='Maximale Dateigröße in Bytes',
     )
     # Neue Felder
-    category: str = Field(description="Kategorie (document, image, media, archive)")
-    extraction_methods: List[str] = Field(
+    category: str = Field(description='Kategorie (document, image, media, archive)')
+    extraction_methods: list[str] = Field(
         default_factory=list,
-        description="Verwendete Extraktionsmethoden"
+        description='Verwendete Extraktionsmethoden',
     )
 
 
 class FormatsResponse(BaseModel):
     """Response für unterstützte Formate."""
-    
-    formats: List[SupportedFormat] = Field(description="Liste unterstützter Formate")
-    total_count: int = Field(description="Anzahl unterstützter Formate")
-    categories: Dict[str, int] = Field(description="Anzahl pro Kategorie")
+
+    formats: list[SupportedFormat] = Field(description='Liste unterstützter Formate')
+    total_count: int = Field(description='Anzahl unterstützter Formate')
+    categories: dict[str, int] = Field(description='Anzahl pro Kategorie')
 
 
 class HealthResponse(BaseModel):
     """Health-Check Response."""
-    
-    status: str = Field(description="Status der API")
-    version: str = Field(description="API-Version")
-    timestamp: datetime = Field(description="Zeitstempel")
-    uptime: float = Field(description="Uptime in Sekunden")
-    supported_formats_count: int = Field(description="Anzahl unterstützter Formate")
+
+    status: str = Field(description='Status der API')
+    version: str = Field(description='API-Version')
+    timestamp: datetime = Field(description='Zeitstempel')
+    uptime: float = Field(description='Uptime in Sekunden')
+    supported_formats_count: int = Field(description='Anzahl unterstützter Formate')
     # Neue Felder
-    active_jobs: int = Field(description="Aktive Jobs")
-    queue_size: int = Field(description="Warteschlangengröße")
-    worker_status: str = Field(description="Worker-Status")
+    active_jobs: int = Field(description='Aktive Jobs')
+    queue_size: int = Field(description='Warteschlangengröße')
+    worker_status: str = Field(description='Worker-Status')
 
 
 class ErrorResponse(BaseModel):
     """Standard-Fehler-Response."""
-    
-    error: str = Field(description="Fehlercode")
-    message: str = Field(description="Fehlermeldung")
-    details: Optional[Dict[str, Any]] = Field(
+
+    error: str = Field(description='Fehlercode')
+    message: str = Field(description='Fehlermeldung')
+    details: dict[str, Any] | None = Field(
         default=None,
-        description="Zusätzliche Fehlerdetails"
+        description='Zusätzliche Fehlerdetails',
     )
-    timestamp: datetime = Field(description="Zeitstempel des Fehlers")
-    job_id: Optional[str] = Field(
+    timestamp: datetime = Field(description='Zeitstempel des Fehlers')
+    job_id: str | None = Field(
         default=None,
-        description="Job-ID (bei asynchronen Fehlern)"
+        description='Job-ID (bei asynchronen Fehlern)',
     )
