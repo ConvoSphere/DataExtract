@@ -5,14 +5,17 @@ API-Routen für die Datei-Extraktion.
 import tempfile
 from pathlib import Path
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
+from app.core.auth import check_rate_limit, get_current_user, require_write
 from app.core.config import settings
 from app.core.exceptions import FileExtractorException, convert_to_http_exception
+from app.core.logging import get_logger
 from app.extractors import get_extractor, is_format_supported
 from app.models.schemas import ErrorResponse, ExtractionResult
 
 router = APIRouter()
+logger = get_logger("extract_routes")
 
 
 @router.post(
@@ -34,6 +37,8 @@ async def extract_file(
     include_text: bool = Form(True, description='Text extrahieren'),
     include_structure: bool = Form(False, description='Strukturierte Daten extrahieren'),
     language: str | None = Form(None, description='Sprache für die Extraktion (ISO 639-1)'),
+    user: dict = Depends(get_current_user),
+    _: dict = Depends(check_rate_limit),
 ) -> ExtractionResult:
     """
     Extrahiert Inhalt aus einer hochgeladenen Datei.
@@ -58,6 +63,16 @@ async def extract_file(
         500: Server-Fehler
     """
     try:
+        # Logging für Extraktionsanfrage
+        logger.info(
+            "Extraction request received",
+            filename=file.filename,
+            user=user.get("name"),
+            include_metadata=include_metadata,
+            include_text=include_text,
+            include_structure=include_structure,
+        )
+
         # Datei validieren
         if not file.filename:
             raise HTTPException(

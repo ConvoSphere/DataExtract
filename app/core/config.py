@@ -172,6 +172,42 @@ class Settings(BaseSettings):
         default=True,
         description='Metriken aktivieren',
     )
+    
+    # OpenTelemetry-Konfiguration
+    enable_opentelemetry: bool = Field(
+        default=True,
+        description='OpenTelemetry aktivieren',
+    )
+    otlp_endpoint: str | None = Field(
+        default=None,
+        description='OTLP Endpoint für Tracing und Metriken',
+    )
+    jaeger_host: str = Field(
+        default='jaeger',
+        description='Jaeger Host für Tracing',
+    )
+    jaeger_port: int = Field(
+        default=6831,
+        description='Jaeger Port für Tracing',
+    )
+    
+    # Logging-Konfiguration
+    log_format: str = Field(
+        default='json',
+        description='Log-Format (json, console)',
+    )
+    log_level: str = Field(
+        default='INFO',
+        description='Log-Level',
+    )
+    enable_request_logging: bool = Field(
+        default=True,
+        description='Request-Logging aktivieren',
+    )
+    enable_extraction_logging: bool = Field(
+        default=True,
+        description='Extraktions-Logging aktivieren',
+    )
 
     class Config:
         env_file = '.env'

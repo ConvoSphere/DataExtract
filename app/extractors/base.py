@@ -12,6 +12,7 @@ from app.core.exceptions import (
     InvalidFileException,
     TimeoutException,
 )
+from app.core.logging import get_logger
 from app.models.schemas import (
     ExtractedText,
     ExtractionResult,
@@ -27,6 +28,7 @@ class BaseExtractor(ABC):
         self.supported_extensions: list[str] = []
         self.supported_mime_types: list[str] = []
         self.max_file_size: int | None = None
+        self.logger = get_logger(f"extractor.{self.__class__.__name__.lower()}")
 
     @abstractmethod
     def can_extract(self, file_path: Path, mime_type: str) -> bool:
@@ -130,6 +132,16 @@ class BaseExtractor(ABC):
         warnings: list[str] = []
         errors: list[str] = []
 
+        # Logging für Extraktionsstart
+        self.logger.info(
+            "Extraction started",
+            filename=file_path.name,
+            file_size=file_path.stat().st_size,
+            include_metadata=include_metadata,
+            include_text=include_text,
+            include_structure=include_structure,
+        )
+
         try:
             # Datei validieren
             self.validate_file(file_path)
@@ -141,6 +153,11 @@ class BaseExtractor(ABC):
                     file_metadata = self.extract_metadata(file_path)
                 except Exception as e:
                     errors.append(f'Metadaten-Extraktion fehlgeschlagen: {e!s}')
+                    self.logger.warning(
+                        "Metadata extraction failed",
+                        filename=file_path.name,
+                        error=str(e),
+                    )
                     # Fallback-Metadaten erstellen
                     file_metadata = self._create_fallback_metadata(file_path)
 
@@ -151,6 +168,11 @@ class BaseExtractor(ABC):
                     extracted_text = self.extract_text(file_path)
                 except Exception as e:
                     errors.append(f'Text-Extraktion fehlgeschlagen: {e!s}')
+                    self.logger.warning(
+                        "Text extraction failed",
+                        filename=file_path.name,
+                        error=str(e),
+                    )
 
             # Strukturierte Daten extrahieren
             structured_data = None
@@ -159,12 +181,29 @@ class BaseExtractor(ABC):
                     structured_data = self.extract_structured_data(file_path)
                 except Exception as e:
                     errors.append(f'Struktur-Extraktion fehlgeschlagen: {e!s}')
+                    self.logger.warning(
+                        "Structure extraction failed",
+                        filename=file_path.name,
+                        error=str(e),
+                    )
 
             extraction_time = time.time() - start_time
 
             # Timeout prüfen
             if extraction_time > settings.extract_timeout:
                 raise TimeoutException(str(file_path), settings.extract_timeout)
+
+            # Logging für erfolgreiche Extraktion
+            self.logger.info(
+                "Extraction completed",
+                filename=file_path.name,
+                duration=extraction_time,
+                text_length=len(extracted_text.content) if extracted_text else 0,
+                word_count=extracted_text.word_count if extracted_text else 0,
+                success=len(errors) == 0,
+                warnings_count=len(warnings),
+                errors_count=len(errors),
+            )
 
             return ExtractionResult(
                 success=len(errors) == 0,
@@ -179,6 +218,15 @@ class BaseExtractor(ABC):
         except Exception as e:
             extraction_time = time.time() - start_time
             errors.append(f'Allgemeiner Extraktionsfehler: {e!s}')
+
+            # Logging für Extraktionsfehler
+            self.logger.error(
+                "Extraction failed",
+                filename=file_path.name,
+                error_type=type(e).__name__,
+                error_message=str(e),
+                duration=extraction_time,
+            )
 
             return ExtractionResult(
                 success=False,
