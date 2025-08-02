@@ -27,7 +27,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
     def __init__(self, app):
         super().__init__(app)
-        self.logger = get_logger("request_middleware")
+        self.logger = get_logger('request_middleware')
 
     async def dispatch(self, request: Request, call_next):
         start_time = time.time()
@@ -46,13 +46,13 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             log_request_info(
                 self.logger,
                 {
-                    "method": request.method,
-                    "url": str(request.url),
-                    "status_code": response.status_code,
-                    "duration": process_time,
-                    "user_agent": request.headers.get("user-agent"),
-                    "client_ip": request.client.host if request.client else None,
-                }
+                    'method': request.method,
+                    'url': str(request.url),
+                    'status_code': response.status_code,
+                    'duration': process_time,
+                    'user_agent': request.headers.get('user-agent'),
+                    'client_ip': request.client.host if request.client else None,
+                },
             )
 
         return response
@@ -62,15 +62,15 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 async def lifespan(app: FastAPI):
     """Lifecycle-Management für die FastAPI-Anwendung."""
     # Startup
-    logger = get_logger("startup")
-    
+    logger = get_logger('startup')
+
     # Logging und OpenTelemetry initialisieren
     setup_structured_logging()
     if settings.enable_opentelemetry:
         setup_opentelemetry()
-    
+
     logger.info(
-        "Application starting",
+        'Application starting',
         app_name=settings.app_name,
         version=settings.app_version,
         supported_formats_count=len(settings.allowed_extensions),
@@ -81,7 +81,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
-    logger.info("Application shutting down")
+    logger.info('Application shutting down')
 
 
 # FastAPI-Anwendung erstellen
@@ -89,25 +89,25 @@ app = FastAPI(
     title=settings.app_name,
     description="""
     Eine einheitliche API für die Extraktion von Inhalten aus verschiedenen Dateiformaten.
-    
+
     ## Features
-    
+
     * **Unified API**: Einheitliche Schnittstelle für verschiedene Dateiformate
     * **Multiple Formats**: Unterstützung für PDF, DOCX, TXT, CSV, JSON, XML und mehr
     * **Modular Architecture**: Saubere, wartbare Code-Struktur
     * **Comprehensive Documentation**: Vollständige API-Dokumentation
-    
+
     ## Unterstützte Formate
-    
+
     * **PDF**: Text und Metadaten aus PDF-Dateien
     * **DOCX**: Text, Metadaten und Struktur aus Word-Dokumenten
     * **TXT**: Einfache Textdateien
     * **CSV**: Tabellarische Daten
     * **JSON**: Strukturierte JSON-Daten
     * **XML/HTML**: XML-Dokumente und HTML-Seiten
-    
+
     ## Verwendung
-    
+
     1. Laden Sie eine Datei über den `/extract` Endpoint hoch
     2. Die API erkennt automatisch das Dateiformat
     3. Sie erhalten extrahierten Text, Metadaten und strukturierte Daten zurück

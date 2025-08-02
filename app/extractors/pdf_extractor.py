@@ -72,7 +72,7 @@ class PDFExtractor(BaseExtractor):
 
         except Exception as e:
             self.logger.warning(
-                "PDF metadata extraction failed",
+                'PDF metadata extraction failed',
                 filename=file_path.name,
                 error=str(e),
             )
@@ -88,7 +88,7 @@ class PDFExtractor(BaseExtractor):
             with open(file_path, 'rb') as f:
                 pdf_reader = PyPDF2.PdfReader(f)
 
-                for page_num, page in enumerate(pdf_reader.pages):
+                for _page_num, page in enumerate(pdf_reader.pages):
                     try:
                         page_text = page.extract_text()
                         if page_text:
@@ -140,7 +140,7 @@ class PDFExtractor(BaseExtractor):
 
         except Exception as e:
             self.logger.warning(
-                "PDF structured data extraction failed",
+                'PDF structured data extraction failed',
                 filename=file_path.name,
                 error=str(e),
             )

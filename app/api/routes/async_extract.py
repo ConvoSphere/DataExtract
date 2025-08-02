@@ -44,7 +44,7 @@ async def extract_file_async(
 ) -> AsyncExtractionResponse:
     """
     Startet eine asynchrone Extraktion einer Datei.
-    
+
     Args:
         file: Die zu extrahierende Datei
         include_metadata: Ob Metadaten extrahiert werden sollen
@@ -54,7 +54,7 @@ async def extract_file_async(
         include_media: Ob Medien extrahiert werden sollen
         callback_url: URL für Benachrichtigungen bei Fertigstellung
         priority: Priorität der Verarbeitung
-        
+
     Returns:
         AsyncExtractionResponse mit Job-ID und Status
     """
@@ -92,7 +92,7 @@ async def extract_file_async(
             queue = get_job_queue()
 
             # Job zur asynchronen Verarbeitung übermitteln
-            response = queue.submit_job(
+            return queue.submit_job(
                 file_path=temp_file_path,
                 include_metadata=include_metadata,
                 include_text=include_text,
@@ -103,7 +103,6 @@ async def extract_file_async(
                 priority=priority,
             )
 
-            return response
 
         except Exception as e:
             # Temporäre Datei löschen
@@ -137,10 +136,10 @@ async def extract_file_async(
 async def get_job_status(job_id: str) -> JobStatus:
     """
     Gibt den Status eines asynchronen Jobs zurück.
-    
+
     Args:
         job_id: ID des Jobs
-        
+
     Returns:
         JobStatus mit aktuellen Informationen
     """
@@ -173,10 +172,10 @@ async def get_job_status(job_id: str) -> JobStatus:
 async def cancel_job(job_id: str):
     """
     Bricht einen asynchronen Job ab.
-    
+
     Args:
         job_id: ID des Jobs
-        
+
     Returns:
         Erfolgsmeldung
     """
@@ -209,7 +208,7 @@ async def cancel_job(job_id: str):
 async def get_job_stats():
     """
     Gibt Statistiken über alle Jobs zurück.
-    
+
     Returns:
         Job-Statistiken
     """
@@ -241,10 +240,10 @@ async def get_job_stats():
 async def cleanup_old_jobs(max_age_hours: int = 24):
     """
     Bereinigt alte, abgeschlossene Jobs.
-    
+
     Args:
         max_age_hours: Maximales Alter der Jobs in Stunden
-        
+
     Returns:
         Anzahl gelöschter Jobs
     """

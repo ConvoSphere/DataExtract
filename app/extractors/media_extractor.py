@@ -31,7 +31,7 @@ class MediaExtractor(BaseExtractor):
     def __init__(self):
         super().__init__()
         if not MEDIA_AVAILABLE:
-            print('Warnung: Medien-Bibliotheken nicht verfügbar. Installieren Sie moviepy, pydub und speechrecognition.')
+            pass
 
         self.supported_extensions = [
             # Video
@@ -108,8 +108,8 @@ class MediaExtractor(BaseExtractor):
                 # Video-Transkription (Audio-Extraktion + Transkription)
                 content = self._transcribe_video(file_path)
 
-        except Exception as e:
-            print(f'Transkriptions-Fehler für {file_path}: {e}')
+        except Exception:
+            pass
 
         # Statistiken berechnen
         word_count = len(content.split()) if content else 0
@@ -183,15 +183,13 @@ class MediaExtractor(BaseExtractor):
                 recognizer = sr.Recognizer()
                 with sr.AudioFile(temp_wav_path) as source:
                     audio_data = recognizer.record(source)
-                    text = recognizer.recognize_google(audio_data, language='de-DE')
-                    return text
+                    return recognizer.recognize_google(audio_data, language='de-DE')
             finally:
                 # Temporäre Datei löschen
                 if os.path.exists(temp_wav_path):
                     os.unlink(temp_wav_path)
 
-        except Exception as e:
-            print(f'Audio-Transkription fehlgeschlagen: {e}')
+        except Exception:
             return ''
 
     def _transcribe_video(self, file_path: Path) -> str:
@@ -212,8 +210,7 @@ class MediaExtractor(BaseExtractor):
                 if os.path.exists(temp_audio_path):
                     os.unlink(temp_audio_path)
 
-        except Exception as e:
-            print(f'Video-Transkription fehlgeschlagen: {e}')
+        except Exception:
             return ''
 
     def _extract_video_info(self, file_path: Path) -> ExtractedMedia:
@@ -245,7 +242,7 @@ class MediaExtractor(BaseExtractor):
         try:
             audio = AudioSegment.from_file(str(file_path))
 
-            media_info = ExtractedMedia(
+            return ExtractedMedia(
                 media_type='audio',
                 format=file_path.suffix.lower()[1:],  # Ohne Punkt
                 duration=len(audio) / 1000.0,  # Konvertiere zu Sekunden
@@ -253,7 +250,6 @@ class MediaExtractor(BaseExtractor):
                 sample_rate=audio.frame_rate,
             )
 
-            return media_info
 
         except Exception:
             # Fallback-Informationen

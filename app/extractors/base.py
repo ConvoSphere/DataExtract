@@ -28,17 +28,17 @@ class BaseExtractor(ABC):
         self.supported_extensions: list[str] = []
         self.supported_mime_types: list[str] = []
         self.max_file_size: int | None = None
-        self.logger = get_logger(f"extractor.{self.__class__.__name__.lower()}")
+        self.logger = get_logger(f'extractor.{self.__class__.__name__.lower()}')
 
     @abstractmethod
     def can_extract(self, file_path: Path, mime_type: str) -> bool:
         """
         Prüft, ob der Extraktor die gegebene Datei verarbeiten kann.
-        
+
         Args:
             file_path: Pfad zur Datei
             mime_type: MIME-Type der Datei
-            
+
         Returns:
             True, wenn die Datei verarbeitet werden kann
         """
@@ -47,10 +47,10 @@ class BaseExtractor(ABC):
     def extract_metadata(self, file_path: Path) -> FileMetadata:
         """
         Extrahiert Metadaten aus der Datei.
-        
+
         Args:
             file_path: Pfad zur Datei
-            
+
         Returns:
             FileMetadata-Objekt mit den Metadaten
         """
@@ -59,10 +59,10 @@ class BaseExtractor(ABC):
     def extract_text(self, file_path: Path) -> ExtractedText:
         """
         Extrahiert Text aus der Datei.
-        
+
         Args:
             file_path: Pfad zur Datei
-            
+
         Returns:
             ExtractedText-Objekt mit dem extrahierten Text
         """
@@ -71,10 +71,10 @@ class BaseExtractor(ABC):
     def extract_structured_data(self, file_path: Path) -> StructuredData:
         """
         Extrahiert strukturierte Daten aus der Datei.
-        
+
         Args:
             file_path: Pfad zur Datei
-            
+
         Returns:
             StructuredData-Objekt mit den strukturierten Daten
         """
@@ -82,10 +82,10 @@ class BaseExtractor(ABC):
     def validate_file(self, file_path: Path) -> None:
         """
         Validiert die Datei vor der Extraktion.
-        
+
         Args:
             file_path: Pfad zur Datei
-            
+
         Raises:
             InvalidFileException: Wenn die Datei ungültig ist
             FileTooLargeException: Wenn die Datei zu groß ist
@@ -118,13 +118,13 @@ class BaseExtractor(ABC):
     ) -> ExtractionResult:
         """
         Führt eine vollständige Extraktion der Datei durch.
-        
+
         Args:
             file_path: Pfad zur Datei
             include_metadata: Metadaten extrahieren
             include_text: Text extrahieren
             include_structure: Strukturierte Daten extrahieren
-            
+
         Returns:
             ExtractionResult mit allen extrahierten Daten
         """
@@ -134,7 +134,7 @@ class BaseExtractor(ABC):
 
         # Logging für Extraktionsstart
         self.logger.info(
-            "Extraction started",
+            'Extraction started',
             filename=file_path.name,
             file_size=file_path.stat().st_size,
             include_metadata=include_metadata,
@@ -154,7 +154,7 @@ class BaseExtractor(ABC):
                 except Exception as e:
                     errors.append(f'Metadaten-Extraktion fehlgeschlagen: {e!s}')
                     self.logger.warning(
-                        "Metadata extraction failed",
+                        'Metadata extraction failed',
                         filename=file_path.name,
                         error=str(e),
                     )
@@ -169,7 +169,7 @@ class BaseExtractor(ABC):
                 except Exception as e:
                     errors.append(f'Text-Extraktion fehlgeschlagen: {e!s}')
                     self.logger.warning(
-                        "Text extraction failed",
+                        'Text extraction failed',
                         filename=file_path.name,
                         error=str(e),
                     )
@@ -182,7 +182,7 @@ class BaseExtractor(ABC):
                 except Exception as e:
                     errors.append(f'Struktur-Extraktion fehlgeschlagen: {e!s}')
                     self.logger.warning(
-                        "Structure extraction failed",
+                        'Structure extraction failed',
                         filename=file_path.name,
                         error=str(e),
                     )
@@ -195,7 +195,7 @@ class BaseExtractor(ABC):
 
             # Logging für erfolgreiche Extraktion
             self.logger.info(
-                "Extraction completed",
+                'Extraction completed',
                 filename=file_path.name,
                 duration=extraction_time,
                 text_length=len(extracted_text.content) if extracted_text else 0,
@@ -221,7 +221,7 @@ class BaseExtractor(ABC):
 
             # Logging für Extraktionsfehler
             self.logger.error(
-                "Extraction failed",
+                'Extraction failed',
                 filename=file_path.name,
                 error_type=type(e).__name__,
                 error_message=str(e),
