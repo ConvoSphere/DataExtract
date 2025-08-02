@@ -23,40 +23,39 @@ class ExtractorFactory:
         try:
             from app.extractors.docling_extractor import DoclingExtractor
             self._register_extractor(DoclingExtractor(), priority=1)  # Höhere Priorität
-        except ImportError as e:
-            print(f'Warnung: DoclingExtractor konnte nicht geladen werden: {e}')
-            print('Installieren Sie docling mit: uv add docling')
+        except ImportError:
+            pass
 
         # Fallback-Extraktoren
         try:
             from app.extractors.text_extractor import TextExtractor
             self._register_extractor(TextExtractor(), priority=10)
-        except ImportError as e:
-            print(f'Warnung: TextExtractor konnte nicht geladen werden: {e}')
+        except ImportError:
+            pass
 
         try:
             from app.extractors.pdf_extractor import PDFExtractor
             self._register_extractor(PDFExtractor(), priority=10)
-        except ImportError as e:
-            print(f'Warnung: PDFExtractor konnte nicht geladen werden: {e}')
+        except ImportError:
+            pass
 
         try:
             from app.extractors.docx_extractor import DOCXExtractor
             self._register_extractor(DOCXExtractor(), priority=10)
-        except ImportError as e:
-            print(f'Warnung: DOCXExtractor konnte nicht geladen werden: {e}')
+        except ImportError:
+            pass
 
         try:
             from app.extractors.image_extractor import ImageExtractor
             self._register_extractor(ImageExtractor(), priority=10)
-        except ImportError as e:
-            print(f'Warnung: ImageExtractor konnte nicht geladen werden: {e}')
+        except ImportError:
+            pass
 
         try:
             from app.extractors.media_extractor import MediaExtractor
             self._register_extractor(MediaExtractor(), priority=10)
-        except ImportError as e:
-            print(f'Warnung: MediaExtractor konnte nicht geladen werden: {e}')
+        except ImportError:
+            pass
 
     def _register_extractor(self, extractor: BaseExtractor, priority: int = 10) -> None:
         """Registriert einen Extraktor mit Priorität."""
@@ -73,7 +72,7 @@ class ExtractorFactory:
             mime_type = 'application/octet-stream'
 
         # Extraktor mit höchster Priorität finden
-        for extractor, priority in self.extractors:
+        for extractor, _priority in self.extractors:
             if extractor.can_extract(file_path, mime_type):
                 return extractor
 

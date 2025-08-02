@@ -14,10 +14,10 @@ from app.extractors import get_extractor
 def extract_file_task(job_id: str) -> dict[str, Any]:
     """
     Celery-Task für asynchrone Datei-Extraktion.
-    
+
     Args:
         job_id: ID des Jobs
-        
+
     Returns:
         Extraktionsergebnis
     """
@@ -105,8 +105,8 @@ def extract_file_task(job_id: str) -> dict[str, Any]:
                     },
                     timeout=10,
                 )
-            except Exception as e:
-                print(f'Callback-Fehler: {e}')
+            except Exception:
+                pass
 
         # Fortschritt melden
         current_task.update_state(

@@ -5,7 +5,7 @@ Extraktor für einfache Textdateien (TXT, CSV, JSON, XML).
 import csv
 import json
 import re
-import xml.etree.ElementTree as ET
+from defusedxml import ElementTree as ET
 from datetime import datetime
 from pathlib import Path
 

@@ -26,7 +26,7 @@ _start_time = time.time()
 async def health_check() -> HealthResponse:
     """
     Health-Check Endpoint für die API.
-    
+
     Returns:
         HealthResponse mit API-Status und Informationen
     """
@@ -63,7 +63,7 @@ async def health_check() -> HealthResponse:
 async def detailed_health_check():
     """
     Detaillierter Health-Check mit zusätzlichen Informationen.
-    
+
     Returns:
         Detaillierte Status-Informationen
     """
@@ -116,7 +116,7 @@ async def detailed_health_check():
 async def readiness_check():
     """
     Readiness-Check für Load Balancer und Container-Orchestration.
-    
+
     Returns:
         Einfacher Status-Code
     """
@@ -140,7 +140,7 @@ async def readiness_check():
 async def liveness_check():
     """
     Liveness-Check für Container-Orchestration.
-    
+
     Returns:
         Einfacher Status-Code
     """

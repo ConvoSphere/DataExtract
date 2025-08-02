@@ -32,7 +32,7 @@ class ImageExtractor(BaseExtractor):
     def __init__(self):
         super().__init__()
         if not OCR_AVAILABLE:
-            print('Warnung: OCR-Bibliotheken nicht verfügbar. Installieren Sie pytesseract und easyocr.')
+            pass
 
         self.supported_extensions = [
             '.jpg', '.jpeg', '.png', '.gif', '.bmp',
@@ -131,7 +131,7 @@ class ImageExtractor(BaseExtractor):
                         text_parts = []
                         total_confidence = 0.0
 
-                        for (bbox, text, confidence) in results:
+                        for (_bbox, text, confidence) in results:
                             text_parts.append(text)
                             total_confidence += confidence
 
@@ -147,8 +147,8 @@ class ImageExtractor(BaseExtractor):
                     except Exception:
                         pass
 
-        except Exception as e:
-            print(f'OCR-Fehler für {file_path}: {e}')
+        except Exception:
+            pass
 
         # Statistiken berechnen
         word_count = len(content.split()) if content else 0
@@ -210,9 +210,8 @@ class ImageExtractor(BaseExtractor):
 
         # Kontrastverbesserung
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-        enhanced = clahe.apply(denoised)
+        return clahe.apply(denoised)
 
-        return enhanced
 
     def _extract_image_info(self, img: Image.Image, file_path: Path) -> ExtractedImage:
         """Extrahiert detaillierte Bild-Informationen."""
@@ -238,7 +237,7 @@ class ImageExtractor(BaseExtractor):
                     text_parts = []
                     total_confidence = 0.0
 
-                    for (bbox, text, confidence) in results:
+                    for (_bbox, text, confidence) in results:
                         text_parts.append(text)
                         total_confidence += confidence
 

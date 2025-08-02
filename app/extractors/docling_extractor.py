@@ -148,9 +148,9 @@ class DoclingExtractor(BaseExtractor):
                 if 'duration' in doc_metadata:
                     metadata.duration = float(doc_metadata['duration'])
 
-        except Exception as e:
+        except Exception:
             # Fallback zu Basis-Metadaten
-            print(f'Docling Metadaten-Extraktion fehlgeschlagen: {e}')
+            pass
 
         return metadata
 
@@ -190,8 +190,8 @@ class DoclingExtractor(BaseExtractor):
             if hasattr(enriched_doc, 'confidence'):
                 confidence = float(enriched_doc.confidence)
 
-        except Exception as e:
-            print(f'Docling Text-Extraktion fehlgeschlagen: {e}')
+        except Exception:
+            pass
 
         # Statistiken berechnen
         word_count = len(content.split()) if content else 0
@@ -279,8 +279,8 @@ class DoclingExtractor(BaseExtractor):
                     if isinstance(list_data, list):
                         lists.append([str(item) for item in list_data])
 
-        except Exception as e:
-            print(f'Docling Struktur-Extraktion fehlgeschlagen: {e}')
+        except Exception:
+            pass
 
         return StructuredData(
             tables=tables,
@@ -309,8 +309,8 @@ class DoclingExtractor(BaseExtractor):
                 for entity_type, entity_list in entity_doc.entities.items():
                     entities[entity_type] = [str(entity) for entity in entity_list]
 
-        except Exception as e:
-            print(f'Docling Entitäten-Extraktion fehlgeschlagen: {e}')
+        except Exception:
+            pass
 
         return entities
 
@@ -338,8 +338,8 @@ class DoclingExtractor(BaseExtractor):
                     'negative_phrases': sentiment.get('negative', []),
                 }
 
-        except Exception as e:
-            print(f'Docling Sentiment-Analyse fehlgeschlagen: {e}')
+        except Exception:
+            pass
 
         return sentiment_data
 
@@ -361,8 +361,8 @@ class DoclingExtractor(BaseExtractor):
             if hasattr(summary_doc, 'summary'):
                 summary = str(summary_doc.summary)
 
-        except Exception as e:
-            print(f'Docling Zusammenfassung fehlgeschlagen: {e}')
+        except Exception:
+            pass
 
         return summary
 

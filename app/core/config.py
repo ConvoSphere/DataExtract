@@ -172,7 +172,7 @@ class Settings(BaseSettings):
         default=True,
         description='Metriken aktivieren',
     )
-    
+
     # OpenTelemetry-Konfiguration
     enable_opentelemetry: bool = Field(
         default=True,
@@ -190,15 +190,11 @@ class Settings(BaseSettings):
         default=6831,
         description='Jaeger Port für Tracing',
     )
-    
+
     # Logging-Konfiguration
     log_format: str = Field(
         default='json',
         description='Log-Format (json, console)',
-    )
-    log_level: str = Field(
-        default='INFO',
-        description='Log-Level',
     )
     enable_request_logging: bool = Field(
         default=True,

@@ -7,7 +7,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
-from app.core.auth import check_rate_limit, get_current_user, require_write
+from app.core.auth import check_rate_limit, get_current_user
 from app.core.config import settings
 from app.core.exceptions import FileExtractorException, convert_to_http_exception
 from app.core.logging import get_logger
@@ -15,7 +15,7 @@ from app.extractors import get_extractor, is_format_supported
 from app.models.schemas import ErrorResponse, ExtractionResult
 
 router = APIRouter()
-logger = get_logger("extract_routes")
+logger = get_logger('extract_routes')
 
 
 @router.post(
@@ -42,19 +42,19 @@ async def extract_file(
 ) -> ExtractionResult:
     """
     Extrahiert Inhalt aus einer hochgeladenen Datei.
-    
+
     Unterstützt verschiedene Dateiformate wie PDF, DOCX, TXT, CSV, JSON, XML und mehr.
-    
+
     Args:
         file: Die zu extrahierende Datei
         include_metadata: Ob Metadaten extrahiert werden sollen
         include_text: Ob Text extrahiert werden soll
         include_structure: Ob strukturierte Daten extrahiert werden sollen
         language: Sprache für die Extraktion (optional)
-        
+
     Returns:
         ExtractionResult mit den extrahierten Daten
-        
+
     Raises:
         400: Ungültige Datei
         413: Datei zu groß
@@ -65,9 +65,9 @@ async def extract_file(
     try:
         # Logging für Extraktionsanfrage
         logger.info(
-            "Extraction request received",
+            'Extraction request received',
             filename=file.filename,
-            user=user.get("name"),
+            user=user.get('name'),
             include_metadata=include_metadata,
             include_text=include_text,
             include_structure=include_structure,
@@ -106,14 +106,13 @@ async def extract_file(
             extractor = get_extractor(temp_file_path)
 
             # Extraktion durchführen
-            result = extractor.extract(
+            return extractor.extract(
                 file_path=temp_file_path,
                 include_metadata=include_metadata,
                 include_text=include_text,
                 include_structure=include_structure,
             )
 
-            return result
 
         finally:
             # Temporäre Datei löschen
@@ -141,7 +140,7 @@ async def extract_file(
 async def get_supported_formats():
     """
     Gibt alle unterstützten Dateiformate zurück.
-    
+
     Returns:
         Liste der unterstützten Formate mit Details
     """
@@ -185,13 +184,13 @@ async def extract_batch(
 ):
     """
     Extrahiert Inhalt aus mehreren Dateien in einem Batch.
-    
+
     Args:
         files: Liste der zu extrahierenden Dateien
         include_metadata: Ob Metadaten extrahiert werden sollen
         include_text: Ob Text extrahiert werden soll
         include_structure: Ob strukturierte Daten extrahiert werden sollen
-        
+
     Returns:
         Liste der Extraktionsergebnisse
     """
