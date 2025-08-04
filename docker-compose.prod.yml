@@ -1,0 +1,314 @@
+version: '3.8'
+
+services:
+  # Redis für Job-Queue (Production)
+  redis:
+    image: redis:7-alpine
+    container_name: file_extractor_redis_prod
+    ports:
+      - "127.0.0.1:6379:6379"  # Only localhost access
+    volumes:
+      - redis_data_prod:/data
+      - ./config/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    command: redis-server /usr/local/etc/redis/redis.conf
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run
+      - /var/lock
+
+  # API-Server (Production)
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: file_extractor_api_prod
+    ports:
+      - "127.0.0.1:8000:8000"  # Only localhost access
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DEBUG=false
+      - LOG_LEVEL=INFO
+      - MAX_FILE_SIZE=157286400  # 150MB
+      - ENABLE_ASYNC_PROCESSING=true
+      - MAX_CONCURRENT_EXTRACTIONS=10
+      - WORKER_PROCESSES=4
+      - ENABLE_OPENTELEMETRY=true
+      - JAEGER_HOST=jaeger
+      - JAEGER_PORT=6831
+    volumes:
+      - temp_files_prod:/tmp/file_extractor
+      - ./logs:/app/logs:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '1.0'
+
+  # Celery-Worker für asynchrone Verarbeitung (Production)
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: file_extractor_worker_prod
+    command: celery -A app.workers.tasks worker --loglevel=info --concurrency=4 --max-tasks-per-child=1000
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DEBUG=false
+      - LOG_LEVEL=INFO
+      - MAX_FILE_SIZE=157286400  # 150MB
+      - ENABLE_ASYNC_PROCESSING=true
+      - ENABLE_OPENTELEMETRY=true
+      - JAEGER_HOST=jaeger
+      - JAEGER_PORT=6831
+    volumes:
+      - temp_files_prod:/tmp/file_extractor
+      - ./logs:/app/logs:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    deploy:
+      replicas: 3  # Multiple worker instances for scaling
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
+
+  # Celery-Beat für geplante Tasks (Production)
+  beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: file_extractor_beat_prod
+    command: celery -A app.workers.tasks beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DEBUG=false
+      - LOG_LEVEL=INFO
+      - ENABLE_OPENTELEMETRY=true
+      - JAEGER_HOST=jaeger
+      - JAEGER_PORT=6831
+    depends_on:
+      redis:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  # Jaeger für Distributed Tracing (Production)
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: file_extractor_jaeger_prod
+    ports:
+      - "127.0.0.1:16686:16686"  # UI
+      - "127.0.0.1:6831:6831/udp"  # Agent
+      - "127.0.0.1:14268:14268"  # Collector
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - SPAN_STORAGE_TYPE=elasticsearch
+      - ES_SERVER_URLS=http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  # Nginx Reverse Proxy (Production)
+  nginx:
+    image: nginx:alpine
+    container_name: file_extractor_nginx_prod
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro  # SSL certificates
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      - api
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+
+  # Prometheus für Metriken (Production)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: file_extractor_prometheus_prod
+    ports:
+      - "127.0.0.1:9090:9090"  # Only localhost access
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data_prod:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  # Grafana für Visualisierung (Production)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: file_extractor_grafana_prod
+    ports:
+      - "127.0.0.1:3000:3000"  # Only localhost access
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data_prod:/var/lib/grafana
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  # Elasticsearch für Logs (Production)
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: file_extractor_elasticsearch_prod
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - cluster.name=file-extractor
+      - node.name=file-extractor-node
+    ports:
+      - "127.0.0.1:9200:9200"  # Only localhost access
+    volumes:
+      - elasticsearch_data_prod:/usr/share/elasticsearch/data
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+
+  # Kibana für Log-Visualisierung (Production)
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: file_extractor_kibana_prod
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - SERVER_NAME=file-extractor-kibana
+    ports:
+      - "127.0.0.1:5601:5601"  # Only localhost access
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  # Filebeat für Log-Sammlung (Production)
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.11.0
+    container_name: file_extractor_filebeat_prod
+    user: root
+    volumes:
+      - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - ./logs:/var/log/app:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+volumes:
+  redis_data_prod:
+    driver: local
+  temp_files_prod:
+    driver: local
+  prometheus_data_prod:
+    driver: local
+  grafana_data_prod:
+    driver: local
+  elasticsearch_data_prod:
+    driver: local
+
+networks:
+  default:
+    name: file_extractor_prod_network
+    driver: bridge

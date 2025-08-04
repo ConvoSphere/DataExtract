@@ -1,157 +1,155 @@
-.PHONY: help install dev test lint format docs build docker-build docker-run docker-stop clean
+# Universal File Extractor API Makefile
 
-# Standardziel
+.PHONY: help setup-dev setup-test setup-prod clean test quality docs docker-build docker-test docker-prod
+
+# Default target
 help:
-	@echo "Universal File Extractor API - Makefile"
+	@echo "Universal File Extractor API - Available Commands:"
 	@echo ""
-	@echo "Verfügbare Befehle:"
-	@echo "  install      - Dependencies installieren"
-	@echo "  dev          - Entwicklungsserver starten"
-	@echo "  test         - Tests ausführen"
-	@echo "  lint         - Code-Linting mit Ruff"
-	@echo "  format       - Code formatieren mit Ruff"
-	@echo "  docs         - Dokumentation starten"
-	@echo "  build        - Produktions-Build"
-	@echo "  docker-build - Docker-Image bauen"
-	@echo "  docker-run   - Docker-Compose starten"
-	@echo "  docker-stop  - Docker-Compose stoppen"
-	@echo "  clean        - Aufräumen"
+	@echo "Setup Commands:"
+	@echo "  setup-dev     - Setup development environment"
+	@echo "  setup-test    - Setup testing environment with monitoring"
+	@echo "  setup-prod    - Setup production environment"
+	@echo ""
+	@echo "Development Commands:"
+	@echo "  install       - Install dependencies with UV"
+	@echo "  test          - Run tests"
+	@echo "  quality       - Run code quality checks"
+	@echo "  format        - Format code with Ruff"
+	@echo "  lint          - Lint code with Ruff"
+	@echo "  type-check    - Run type checking with MyPy"
+	@echo "  security      - Run security checks"
+	@echo ""
+	@echo "Docker Commands:"
+	@echo "  docker-build  - Build Docker images"
+	@echo "  docker-dev    - Start development environment"
+	@echo "  docker-test   - Start testing environment"
+	@echo "  docker-prod   - Start production environment"
+	@echo "  docker-stop   - Stop all containers"
+	@echo "  docker-clean  - Clean up Docker resources"
+	@echo ""
+	@echo "Documentation:"
+	@echo "  docs          - Start documentation server"
+	@echo "  docs-build    - Build documentation"
+	@echo ""
+	@echo "Utility Commands:"
+	@echo "  clean         - Clean up temporary files"
+	@echo "  logs          - Show application logs"
+	@echo "  status        - Show service status"
 
-# Dependencies installieren
+# Setup Commands
+setup-dev: install
+	@echo "Setting up development environment..."
+	pre-commit install
+	@echo "Development environment ready!"
+
+setup-test: install
+	@echo "Setting up testing environment..."
+	docker-compose -f docker-compose.test.yml up -d
+	@echo "Testing environment ready! Access monitoring at:"
+	@echo "  - Grafana: http://localhost:3000 (admin/admin)"
+	@echo "  - Prometheus: http://localhost:9090"
+	@echo "  - Jaeger: http://localhost:16686"
+	@echo "  - Kibana: http://localhost:5601"
+
+setup-prod: install
+	@echo "Setting up production environment..."
+	@if [ ! -f .env.prod ]; then \
+		echo "Creating .env.prod file..."; \
+		cp .env.example .env.prod; \
+		echo "Please edit .env.prod with your production settings"; \
+	fi
+	docker-compose -f docker-compose.prod.yml up -d
+	@echo "Production environment ready!"
+
+# Development Commands
 install:
 	@echo "Installing dependencies with UV..."
-	uv sync
-	uv pip install pre-commit
-	pre-commit install
+	uv sync --group dev
+	@echo "Dependencies installed!"
 
-# Entwicklungsserver
-dev:
-	@echo "Starting development server..."
-	uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-# Tests ausführen
 test:
 	@echo "Running tests..."
-	uv run pytest tests/ -v --cov=app --cov-report=html --cov-report=term-missing
+	uv run pytest tests/ -v --cov=app --cov-report=term-missing
 
-# Unit-Tests ausführen
-test-unit:
-	@echo "Running unit tests..."
-	uv run pytest tests/ -v -m "not integration and not performance" --cov=app --cov-report=term-missing
+test-coverage:
+	@echo "Running tests with coverage report..."
+	uv run pytest tests/ --cov=app --cov-report=html --cov-report=xml
 
-# Integration-Tests ausführen
-test-integration:
-	@echo "Running integration tests..."
-	uv run pytest tests/test_integration.py -v --cov=app --cov-report=term-missing
+quality: format lint type-check security
+	@echo "All quality checks completed!"
 
-# Performance-Tests ausführen
-test-performance:
-	@echo "Running performance tests..."
-	uv run pytest tests/test_performance.py -v
-
-# Alle Tests mit Coverage
-test-all:
-	@echo "Running all tests with coverage..."
-	uv run pytest tests/ -v --cov=app --cov-report=html --cov-report=term-missing --cov-report=xml
-
-# Code-Linting mit Ruff
-lint:
-	@echo "Running Ruff linter..."
-	uv run ruff check app/ tests/
-	uv run ruff check --select I app/ tests/  # Import sorting
-
-# Code formatieren mit Ruff
 format:
 	@echo "Formatting code with Ruff..."
 	uv run ruff format app/ tests/
-	uv run ruff check --fix app/ tests/
 
-# Code-Linting und Formatierung
-lint-fix: format lint
+lint:
+	@echo "Linting code with Ruff..."
+	uv run ruff check app/ tests/
 
-# Dokumentation
+type-check:
+	@echo "Running type checking with MyPy..."
+	uv run mypy app/
+
+security:
+	@echo "Running security checks..."
+	uv run bandit -r app/ -f json -o bandit-report.json || true
+	uv run safety check --json --output safety-report.json || true
+
+# Docker Commands
+docker-build:
+	@echo "Building Docker images..."
+	docker-compose build
+
+docker-dev:
+	@echo "Starting development environment..."
+	docker-compose up -d
+	@echo "Development environment started!"
+	@echo "API available at: http://localhost:8000"
+	@echo "API docs at: http://localhost:8000/docs"
+
+docker-test:
+	@echo "Starting testing environment..."
+	docker-compose -f docker-compose.test.yml up -d
+	@echo "Testing environment started!"
+	@echo "Monitoring available at:"
+	@echo "  - Grafana: http://localhost:3000 (admin/admin)"
+	@echo "  - Prometheus: http://localhost:9090"
+	@echo "  - Jaeger: http://localhost:16686"
+	@echo "  - Kibana: http://localhost:5601"
+
+docker-prod:
+	@echo "Starting production environment..."
+	docker-compose -f docker-compose.prod.yml up -d
+	@echo "Production environment started!"
+	@echo "API available at: http://localhost:8000 (via nginx)"
+
+docker-stop:
+	@echo "Stopping all containers..."
+	docker-compose down
+	docker-compose -f docker-compose.test.yml down
+	docker-compose -f docker-compose.prod.yml down
+
+docker-clean:
+	@echo "Cleaning up Docker resources..."
+	docker-compose down -v --remove-orphans
+	docker-compose -f docker-compose.test.yml down -v --remove-orphans
+	docker-compose -f docker-compose.prod.yml down -v --remove-orphans
+	docker system prune -f
+	docker volume prune -f
+
+# Documentation Commands
 docs:
 	@echo "Starting documentation server..."
 	uv run mkdocs serve
 
-# Dokumentation bauen
 docs-build:
 	@echo "Building documentation..."
 	uv run mkdocs build
 
-# Produktions-Build
-build:
-	@echo "Building production version..."
-	uv build
-
-# Docker-Image bauen
-docker-build:
-	@echo "Building Docker image..."
-	docker build -t file-extractor-api .
-
-# Docker-Compose starten
-docker-run:
-	@echo "Starting Docker Compose..."
-	docker-compose up -d
-
-# Docker-Compose stoppen
-docker-stop:
-	@echo "Stopping Docker Compose..."
-	docker-compose down
-
-# Docker-Compose mit Logs
-docker-logs:
-	@echo "Showing Docker logs..."
-	docker-compose logs -f
-
-# Docker-Compose neu starten
-docker-restart:
-	@echo "Restarting Docker Compose..."
-	docker-compose restart
-
-# Docker-Compose mit Build
-docker-up:
-	@echo "Building and starting Docker Compose..."
-	docker-compose up --build -d
-
-# Test-Umgebung starten
-test-env:
-	@echo "Starting test environment with monitoring..."
-	docker-compose -f docker-compose.test.yml up --build -d
-
-# Test-Umgebung stoppen
-test-env-stop:
-	@echo "Stopping test environment..."
-	docker-compose -f docker-compose.test.yml down
-
-# Test-Umgebung Logs
-test-env-logs:
-	@echo "Showing test environment logs..."
-	docker-compose -f docker-compose.test.yml logs -f
-
-# Test-Umgebung neu starten
-test-env-restart:
-	@echo "Restarting test environment..."
-	docker-compose -f docker-compose.test.yml restart
-
-# Kubernetes Deployment
-k8s-deploy:
-	@echo "Deploying to Kubernetes..."
-	kubectl apply -f k8s/
-
-# Kubernetes Status
-k8s-status:
-	@echo "Kubernetes status..."
-	kubectl get pods -l app=file-extractor-api
-
-# Kubernetes Logs
-k8s-logs:
-	@echo "Kubernetes logs..."
-	kubectl logs -l app=file-extractor-api -f
-
-# Aufräumen
+# Utility Commands
 clean:
-	@echo "Cleaning up..."
+	@echo "Cleaning up temporary files..."
 	find . -type f -name "*.pyc" -delete
 	find . -type d -name "__pycache__" -delete
 	find . -type d -name "*.egg-info" -exec rm -rf {} +
@@ -160,147 +158,110 @@ clean:
 	rm -rf .coverage
 	rm -rf dist/
 	rm -rf build/
-	rm -rf .ruff_cache/
+	@echo "Cleanup completed!"
 
-# Vollständige Bereinigung (inkl. Docker)
-clean-all: clean
-	@echo "Full cleanup including Docker..."
-	docker-compose down -v
-	docker system prune -f
-	docker volume prune -f
+logs:
+	@echo "Showing application logs..."
+	docker-compose logs -f api
 
-# Health-Check
+logs-test:
+	@echo "Showing test environment logs..."
+	docker-compose -f docker-compose.test.yml logs -f
+
+logs-prod:
+	@echo "Showing production environment logs..."
+	docker-compose -f docker-compose.prod.yml logs -f
+
+status:
+	@echo "Development environment status:"
+	docker-compose ps
+	@echo ""
+	@echo "Test environment status:"
+	docker-compose -f docker-compose.test.yml ps
+	@echo ""
+	@echo "Production environment status:"
+	docker-compose -f docker-compose.prod.yml ps
+
+# Health checks
 health:
 	@echo "Checking API health..."
-	curl -f http://localhost:8000/api/v1/health/live || echo "API not responding"
+	curl -f http://localhost:8000/api/v1/health || echo "API not responding"
 
-# API-Dokumentation öffnen
-docs-open:
-	@echo "Opening API documentation..."
-	xdg-open http://localhost:8000/docs 2>/dev/null || open http://localhost:8000/docs 2>/dev/null || echo "Please open http://localhost:8000/docs manually"
+health-test:
+	@echo "Checking test environment health..."
+	curl -f http://localhost:8000/api/v1/health || echo "API not responding"
+	curl -f http://localhost:3000/api/health || echo "Grafana not responding"
+	curl -f http://localhost:9090/-/healthy || echo "Prometheus not responding"
 
-# Flower-Monitoring öffnen
-flower-open:
-	@echo "Opening Flower monitoring..."
-	xdg-open http://localhost:5555 2>/dev/null || open http://localhost:5555 2>/dev/null || echo "Please open http://localhost:5555 manually"
-
-# Grafana öffnen
-grafana-open:
-	@echo "Opening Grafana..."
-	xdg-open http://localhost:3000 2>/dev/null || open http://localhost:3000 2>/dev/null || echo "Please open http://localhost:3000 manually"
-
-# Prometheus öffnen
-prometheus-open:
-	@echo "Opening Prometheus..."
-	xdg-open http://localhost:9090 2>/dev/null || open http://localhost:9090 2>/dev/null || echo "Please open http://localhost:9090 manually"
-
-# Beispiel-Datei erstellen
-create-sample:
-	@echo "Creating sample files..."
-	mkdir -p samples
-	echo "Dies ist eine Beispiel-Textdatei für die API." > samples/sample.txt
-	echo '{"name": "Beispiel", "type": "JSON", "data": [1, 2, 3]}' > samples/sample.json
-	echo "Name,Alter,Stadt\nMax,25,Berlin\nAnna,30,München" > samples/sample.csv
-
-# Performance-Test
-perf-test:
-	@echo "Running performance test..."
-	uv run pytest tests/test_performance.py -v
-
-# Security-Check
-security-check:
-	@echo "Running security checks..."
-	uv run ruff check --select S app/  # Security rules
-	uv run safety check
-
-# Backup erstellen
+# Backup and restore
 backup:
 	@echo "Creating backup..."
-	tar -czf backup-$(date +%Y%m%d-%H%M%S).tar.gz \
-		--exclude='.git' \
-		--exclude='__pycache__' \
-		--exclude='*.pyc' \
-		--exclude='.pytest_cache' \
-		--exclude='htmlcov' \
-		--exclude='dist' \
-		--exclude='build' \
-		--exclude='.ruff_cache' \
-		.
+	mkdir -p backup/$(shell date +%Y%m%d)
+	docker exec file_extractor_redis redis-cli BGSAVE
+	docker cp file_extractor_redis:/data/dump.rdb backup/$(shell date +%Y%m%d)/
+	tar -czf backup/$(shell date +%Y%m%d)/app-data.tar.gz logs/ temp_files/ 2>/dev/null || true
+	@echo "Backup created in backup/$(shell date +%Y%m%d)/"
 
-# Release erstellen
-release:
-	@echo "Creating release..."
-	uv version patch
-	git add pyproject.toml
-	git commit -m "Bump version to $(uv version)"
-	git tag v$(uv version)
-	git push origin main --tags
+restore:
+	@echo "Restoring from backup..."
+	@if [ -z "$(BACKUP_DATE)" ]; then \
+		echo "Usage: make restore BACKUP_DATE=YYYYMMDD"; \
+		exit 1; \
+	fi
+	docker cp backup/$(BACKUP_DATE)/dump.rdb file_extractor_redis:/data/
+	docker exec file_extractor_redis redis-cli BGREWRITEAOF
+	@echo "Restore completed!"
 
-# Development-Setup
-setup-dev: install create-sample
-	@echo "Development setup complete!"
-	@echo "Run 'make dev' to start the development server"
-	@echo "Run 'make docs' to start the documentation server"
+# Performance testing
+perf-test:
+	@echo "Running performance tests..."
+	uv run pytest tests/test_performance.py -v
 
-# Production-Setup
-setup-prod: docker-build docker-run
-	@echo "Production setup complete!"
-	@echo "API is running at http://localhost:8000"
-	@echo "Documentation at http://localhost:8000/docs"
-	@echo "Monitoring at http://localhost:5555 (Flower)"
-	@echo "Metrics at http://localhost:9090 (Prometheus)"
-	@echo "Dashboard at http://localhost:3000 (Grafana)"
+# Integration testing
+integration-test:
+	@echo "Running integration tests..."
+	uv run pytest tests/integration/ -v
 
-# UV-spezifische Befehle
-uv-sync:
-	@echo "Syncing dependencies with UV..."
-	uv sync
+# Load testing
+load-test:
+	@echo "Running load tests..."
+	@if [ -z "$(REQUESTS)" ]; then \
+		REQUESTS=100; \
+	fi
+	@if [ -z "$(CONCURRENT)" ]; then \
+		CONCURRENT=10; \
+	fi
+	uv run python scripts/load_test.py --requests $(REQUESTS) --concurrent $(CONCURRENT)
 
-uv-add:
-	@echo "Adding dependency with UV..."
-	@read -p "Enter package name: " package; \
-	uv add $$package
+# Development shortcuts
+dev: docker-dev
+	@echo "Development environment ready!"
 
-uv-add-dev:
-	@echo "Adding dev dependency with UV..."
-	@read -p "Enter package name: " package; \
-	uv add --dev $$package
+dev-logs: logs
+	@echo "Showing development logs..."
 
-uv-remove:
-	@echo "Removing dependency with UV..."
-	@read -p "Enter package name: " package; \
-	uv remove $$package
+dev-restart:
+	@echo "Restarting development environment..."
+	docker-compose restart api worker
 
-uv-update:
-	@echo "Updating dependencies with UV..."
-	uv lock --upgrade
+# Production shortcuts
+prod: docker-prod
+	@echo "Production environment ready!"
 
-# Ruff-spezifische Befehle
-ruff-check:
-	@echo "Running Ruff checks..."
-	uv run ruff check app/ tests/
+prod-logs: logs-prod
+	@echo "Showing production logs..."
 
-ruff-format:
-	@echo "Running Ruff formatter..."
-	uv run ruff format app/ tests/
+prod-restart:
+	@echo "Restarting production environment..."
+	docker-compose -f docker-compose.prod.yml restart api worker
 
-ruff-fix:
-	@echo "Running Ruff with auto-fix..."
-	uv run ruff check --fix app/ tests/
+# Testing shortcuts
+test-env: docker-test
+	@echo "Test environment ready!"
 
-# Docling-spezifische Befehle
-install-docling:
-	@echo "Installing docling..."
-	uv add docling
+test-logs: logs-test
+	@echo "Showing test environment logs..."
 
-test-docling:
-	@echo "Testing docling integration..."
-	uv run python -c "import docling; print('Docling version:', docling.__version__)"
-
-# Code-Qualität
-quality: lint-fix test
-	@echo "Code quality check complete!"
-
-# Vollständiger Check
-check: quality security-check
-	@echo "Full check complete!"
+test-restart:
+	@echo "Restarting test environment..."
+	docker-compose -f docker-compose.test.yml restart api worker
