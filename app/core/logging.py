@@ -1,5 +1,5 @@
 """
-Strukturiertes Logging und OpenTelemetry-Konfiguration.
+Strukturiertes Logging und OpenTelemetry-Konfiguration für Microservice.
 """
 
 import logging
@@ -8,12 +8,13 @@ from datetime import datetime
 from typing import Any
 
 import structlog
-from opentelemetry import trace
-from opentelemetry.exporter.jaeger.thrift import JaegerExporter
+from opentelemetry import trace, metrics
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.exporter.prometheus import PrometheusMetricReader
+from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
 from opentelemetry.instrumentation.logging import LoggingInstrumentor
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
+from opentelemetry.instrumentation.redis import RedisInstrumentor
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import Resource
@@ -62,6 +63,7 @@ def setup_opentelemetry() -> None:
         'service.version': settings.app_version,
         'service.instance.id': f'{settings.app_name}-{datetime.now().isoformat()}',
         'deployment.environment': settings.environment,
+        'service.namespace': 'file-extractor',
     })
 
     # Tracer Provider konfigurieren
@@ -73,48 +75,105 @@ def setup_opentelemetry() -> None:
         console_exporter = ConsoleSpanExporter()
         tracer_provider.add_span_processor(BatchSpanProcessor(console_exporter))
     else:
-        # Jaeger Exporter für Produktion
-        jaeger_exporter = JaegerExporter(
-            agent_host_name='jaeger',
-            agent_port=6831,
-        )
-        tracer_provider.add_span_processor(BatchSpanProcessor(jaeger_exporter))
-
-        # OTLP Exporter (falls konfiguriert)
-        if hasattr(settings, 'otlp_endpoint') and settings.otlp_endpoint:
-            otlp_exporter = OTLPSpanExporter(endpoint=settings.otlp_endpoint)
-            tracer_provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
+        # OTLP Exporter für Produktion (zentrale Infrastruktur)
+        if settings.otlp_endpoint:
+            otlp_trace_exporter = OTLPSpanExporter(endpoint=settings.otlp_endpoint)
+            tracer_provider.add_span_processor(BatchSpanProcessor(otlp_trace_exporter))
 
     # Tracer Provider setzen
     trace.set_tracer_provider(tracer_provider)
 
     # Meter Provider konfigurieren
-    metric_readers = []
+    if settings.enable_metrics:
+        metric_readers = []
 
-    # Prometheus Metric Reader
-    prometheus_reader = PrometheusMetricReader()
-    metric_readers.append(prometheus_reader)
+        # OTLP Metric Reader für zentrale Infrastruktur
+        if settings.otlp_endpoint:
+            otlp_metric_exporter = OTLPMetricExporter(endpoint=settings.otlp_endpoint)
+            otlp_reader = PeriodicExportingMetricReader(
+                otlp_metric_exporter,
+                export_interval_millis=15000,  # 15 Sekunden
+            )
+            metric_readers.append(otlp_reader)
 
-    # OTLP Metric Reader (falls konfiguriert)
-    if hasattr(settings, 'otlp_endpoint') and settings.otlp_endpoint:
-        otlp_reader = PeriodicExportingMetricReader(
-            OTLPSpanExporter(endpoint=settings.otlp_endpoint),
-        )
-        metric_readers.append(otlp_reader)
-
-    MeterProvider(
-        resource=resource,
-        metric_readers=metric_readers,
-    )
+        if metric_readers:
+            meter_provider = MeterProvider(
+                resource=resource,
+                metric_readers=metric_readers,
+            )
+            metrics.set_meter_provider(meter_provider)
 
     # Instrumentierungen aktivieren
     LoggingInstrumentor().instrument()
     RequestsInstrumentor().instrument()
+    RedisInstrumentor().instrument()
 
 
 def get_logger(name: str) -> structlog.stdlib.BoundLogger:
     """Gibt einen strukturierten Logger zurück."""
     return structlog.get_logger(name)
+
+
+def get_tracer(name: str = None) -> trace.Tracer:
+    """Gibt einen OpenTelemetry Tracer zurück."""
+    return trace.get_tracer(name or __name__)
+
+
+def get_meter(name: str = None) -> metrics.Meter:
+    """Gibt einen OpenTelemetry Meter zurück."""
+    return metrics.get_meter(name or __name__)
+
+
+# Custom Metrics definieren
+def setup_custom_metrics() -> dict:
+    """Definiert Custom Metrics für den Microservice."""
+    meter = get_meter("file_extractor")
+    
+    metrics_dict = {
+        # Counter für Extraktionen
+        'extractions_total': meter.create_counter(
+            name="file_extractions_total",
+            description="Total number of file extractions",
+            unit="1"
+        ),
+        
+        # Counter für Extraktionsfehler
+        'extraction_errors_total': meter.create_counter(
+            name="extraction_errors_total", 
+            description="Total number of extraction errors",
+            unit="1"
+        ),
+        
+        # Histogram für Extraktionsdauer
+        'extraction_duration_seconds': meter.create_histogram(
+            name="extraction_duration_seconds",
+            description="Duration of file extractions",
+            unit="s"
+        ),
+        
+        # Gauge für aktive Jobs
+        'active_jobs': meter.create_up_down_counter(
+            name="active_jobs",
+            description="Number of currently active extraction jobs",
+            unit="1"
+        ),
+        
+        # Counter für unterstützte Dateitypen
+        'file_type_extractions_total': meter.create_counter(
+            name="file_type_extractions_total",
+            description="Total extractions by file type",
+            unit="1"
+        ),
+        
+        # Histogram für Dateigrößen
+        'file_size_bytes': meter.create_histogram(
+            name="file_size_bytes",
+            description="Size of processed files",
+            unit="bytes"
+        ),
+    }
+    
+    return metrics_dict
 
 
 def log_request_info(logger: structlog.stdlib.BoundLogger, request_info: dict[str, Any]) -> None:

@@ -1,0 +1,162 @@
+version: '3.8'
+
+services:
+  # Redis für Job-Queue
+  redis:
+    image: redis:7-alpine
+    container_name: file_extractor_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # API-Server
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: file_extractor_api
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DEBUG=false
+      - LOG_LEVEL=INFO
+      - MAX_FILE_SIZE=157286400  # 150MB
+      - ENABLE_ASYNC_PROCESSING=true
+      - MAX_CONCURRENT_EXTRACTIONS=10
+      - WORKER_PROCESSES=4
+      - ENABLE_OPENTELEMETRY=true
+      - OTLP_ENDPOINT=${OTLP_ENDPOINT:-http://otel-collector:4317}
+      - ENABLE_METRICS=true
+      - ENABLE_TRACING=true
+      - SERVICE_NAME=file-extractor
+      - SERVICE_VERSION=0.1.0
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+    volumes:
+      - temp_files:/tmp/file_extractor
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '1.0'
+
+  # Celery-Worker für asynchrone Verarbeitung
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: file_extractor_worker
+    command: celery -A app.workers.tasks worker --loglevel=info --concurrency=4 --max-tasks-per-child=1000
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DEBUG=false
+      - LOG_LEVEL=INFO
+      - MAX_FILE_SIZE=157286400  # 150MB
+      - ENABLE_ASYNC_PROCESSING=true
+      - ENABLE_OPENTELEMETRY=true
+      - OTLP_ENDPOINT=${OTLP_ENDPOINT:-http://otel-collector:4317}
+      - ENABLE_METRICS=true
+      - ENABLE_TRACING=true
+      - SERVICE_NAME=file-extractor-worker
+      - SERVICE_VERSION=0.1.0
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+    volumes:
+      - temp_files:/tmp/file_extractor
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '1.0'
+      replicas: 2  # Mehrere Worker-Instanzen für Skalierung
+
+  # Celery-Beat für geplante Tasks (Cleanup, etc.)
+  beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: file_extractor_beat
+    command: celery -A app.workers.tasks beat --loglevel=info
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DEBUG=false
+      - LOG_LEVEL=INFO
+      - ENABLE_OPENTELEMETRY=true
+      - OTLP_ENDPOINT=${OTLP_ENDPOINT:-http://otel-collector:4317}
+      - ENABLE_METRICS=true
+      - ENABLE_TRACING=true
+      - SERVICE_NAME=file-extractor-beat
+      - SERVICE_VERSION=0.1.0
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Flower für Celery-Monitoring (optional, nur für Debug)
+  flower:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: file_extractor_flower
+    command: celery -A app.workers.tasks flower --port=5555
+    ports:
+      - "5555:5555"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DEBUG=false
+      - LOG_LEVEL=INFO
+      - ENABLE_OPENTELEMETRY=true
+      - OTLP_ENDPOINT=${OTLP_ENDPOINT:-http://otel-collector:4317}
+      - ENABLE_METRICS=true
+      - ENABLE_TRACING=true
+      - SERVICE_NAME=file-extractor-flower
+      - SERVICE_VERSION=0.1.0
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    profiles:
+      - debug  # Nur in Debug-Modus starten
+
+volumes:
+  redis_data:
+    driver: local
+  temp_files:
+    driver: local
+
+networks:
+  default:
+    name: file_extractor_network
+    driver: bridge
