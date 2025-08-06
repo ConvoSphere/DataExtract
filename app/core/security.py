@@ -129,10 +129,15 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         )
         
         # Cache Control für sensitive Endpoints
-        if '/health' in str(response.url) or '/metrics' in str(response.url):
-            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-            response.headers['Pragma'] = 'no-cache'
-            response.headers['Expires'] = '0'
+        try:
+            if hasattr(response, 'url') and response.url:
+                if '/health' in str(response.url) or '/metrics' in str(response.url):
+                    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+                    response.headers['Pragma'] = 'no-cache'
+                    response.headers['Expires'] = '0'
+        except Exception:
+            # Ignore errors for responses without url attribute
+            pass
 
 
 class InputSanitizationMiddleware(BaseHTTPMiddleware):

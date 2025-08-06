@@ -60,6 +60,7 @@ dependencies = [
     "opentelemetry-instrumentation-logging>=0.42b0",
     "opentelemetry-instrumentation-redis>=0.42b0",
     "opentelemetry-exporter-otlp>=1.21.0",
+    "httpx>=0.28.1",
 ]
 
 [project.optional-dependencies]

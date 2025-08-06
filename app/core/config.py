@@ -231,6 +231,29 @@ class Settings(BaseSettings):
         description='Namespace für OpenTelemetry',
     )
 
+    # Additional fields for .env compatibility
+    secret_key: str = Field(default='your-secret-key-here', description='Secret key for the application')
+    allowed_hosts: str = Field(default='localhost,127.0.0.1', description='Allowed hosts')
+    celery_broker_url: str = Field(default='redis://redis:6379/0', description='Celery broker URL')
+    celery_result_backend: str = Field(default='redis://redis:6379/0', description='Celery result backend')
+    celery_task_serializer: str = Field(default='json', description='Celery task serializer')
+    celery_result_serializer: str = Field(default='json', description='Celery result serializer')
+    celery_accept_content: str = Field(default='json', description='Celery accept content')
+    celery_timezone: str = Field(default='UTC', description='Celery timezone')
+    celery_enable_utc: str = Field(default='true', description='Celery enable UTC')
+    jaeger_host: str = Field(default='jaeger', description='Jaeger host')
+    jaeger_port: str = Field(default='6831', description='Jaeger port')
+    prometheus_enabled: str = Field(default='true', description='Prometheus enabled')
+    ocr_languages: str = Field(default='eng,deu', description='OCR languages')
+    rate_limit_requests: str = Field(default='100', description='Rate limit requests')
+    rate_limit_window: str = Field(default='60', description='Rate limit window')
+    grafana_password: str = Field(default='admin', description='Grafana password')
+    grafana_user: str = Field(default='admin', description='Grafana user')
+    aws_region: str = Field(default='us-west-2', description='AWS region')
+    smtp_port: str = Field(default='587', description='SMTP port')
+    database_pool_size: str = Field(default='10', description='Database pool size')
+    database_max_overflow: str = Field(default='20', description='Database max overflow')
+
     class Config:
         env_file = '.env'
         case_sensitive = False
