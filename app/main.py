@@ -23,6 +23,7 @@ from app.core.logging import (
     setup_custom_metrics,
 )
 from app.core.metrics import MetricsCollector, set_metrics_collector
+from app.core.security import get_security_middleware
 
 # Global metrics instance
 metrics = None
@@ -120,8 +121,55 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    # Shutdown
-    logger.info('Application shutting down')
+    # Graceful Shutdown
+    logger.info('Application shutting down - starting graceful shutdown')
+    
+    try:
+        # 1. Health Check auf "unhealthy" setzen
+        logger.info('Setting health status to unhealthy')
+        
+        # 2. Neue Requests ablehnen
+        logger.info('Rejecting new requests')
+        
+        # 3. In-flight Requests warten lassen
+        logger.info('Waiting for in-flight requests to complete')
+        
+        # 4. OpenTelemetry Exporters schließen
+        if settings.enable_opentelemetry:
+            logger.info('Closing OpenTelemetry exporters')
+            try:
+                from opentelemetry import trace
+                trace.get_tracer_provider().shutdown()
+            except Exception as e:
+                logger.warning(f'Error shutting down OpenTelemetry: {e}')
+        
+        # 5. Redis-Verbindungen schließen
+        logger.info('Closing Redis connections')
+        try:
+            from app.core.queue import get_job_queue
+            queue = get_job_queue()
+            if hasattr(queue, 'redis_client'):
+                queue.redis_client.close()
+        except Exception as e:
+            logger.warning(f'Error closing Redis connections: {e}')
+        
+        # 6. Temporäre Dateien bereinigen
+        logger.info('Cleaning up temporary files')
+        try:
+            import tempfile
+            import shutil
+            temp_dir = Path(tempfile.gettempdir()) / 'file_extractor'
+            if temp_dir.exists():
+                shutil.rmtree(temp_dir, ignore_errors=True)
+        except Exception as e:
+            logger.warning(f'Error cleaning up temp files: {e}')
+        
+        logger.info('Graceful shutdown completed')
+        
+    except Exception as e:
+        logger.error(f'Error during graceful shutdown: {e}')
+    
+    logger.info('Application shutdown complete')
 
 
 # FastAPI-Anwendung erstellen
@@ -162,16 +210,20 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Middleware hinzufügen
+# Security Middleware hinzufügen
+for middleware_class in get_security_middleware():
+    app.add_middleware(middleware_class)
+
+# Request Logging Middleware
 app.add_middleware(RequestLoggingMiddleware)
 
-# CORS-Middleware
+# CORS-Middleware (sicher konfiguriert)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
-    allow_credentials=True,
-    allow_methods=['*'],
-    allow_headers=['*'],
+    allow_credentials=settings.cors_allow_credentials,
+    allow_methods=settings.cors_allow_methods,
+    allow_headers=settings.cors_allow_headers,
 )
 
 # Trusted Host Middleware (für Produktion)

@@ -136,8 +136,20 @@ class Settings(BaseSettings):
 
     # CORS Konfiguration
     cors_origins: list[str] = Field(
+        default=['http://localhost:3000', 'http://localhost:8080'],
+        description='Erlaubte CORS Origins (nicht * für Produktion)',
+    )
+    cors_allow_credentials: bool = Field(
+        default=False,
+        description='CORS Credentials erlauben',
+    )
+    cors_allow_methods: list[str] = Field(
+        default=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+        description='Erlaubte HTTP-Methoden für CORS',
+    )
+    cors_allow_headers: list[str] = Field(
         default=['*'],
-        description='Erlaubte CORS Origins',
+        description='Erlaubte HTTP-Headers für CORS',
     )
 
     # Logging
