@@ -1,0 +1,90 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+        cors:
+          allowed_origins:
+            - "http://test"
+            - "https://otlp.nr-data.net"
+      http:
+        endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins:
+            - "http://test"
+            - "https://otlp.nr-data.net"
+
+processors:
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 1500
+  resource:
+    attributes:
+      - key: environment
+        value: "production"
+        action: upsert
+      - key: service.namespace
+        value: "file-extractor"
+        action: upsert
+
+exporters:
+  # Prometheus für Metriken
+  prometheus:
+    endpoint: "0.0.0.0:9464"
+    namespace: "file_extractor"
+    const_labels:
+      label1: value1
+    send_timestamps: true
+    metric_expiration: 180m
+    enable_open_metrics: true
+    add_metric_suffixes: false
+
+  # Jaeger für Traces
+  jaeger:
+    endpoint: jaeger:14250
+    tls:
+      insecure: true
+
+  # OTLP für zentrale Infrastruktur
+  otlp:
+    endpoint: "http://central-otel-collector:4317"
+    tls:
+      insecure: true
+    headers:
+      authorization: "Bearer ${OTLP_AUTH_TOKEN}"
+
+  # Logging für Debug
+  logging:
+    loglevel: info
+    sampling_initial: 1
+    sampling_thereafter: 1
+
+  # Null für Tests
+  null:
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+  pprof:
+    endpoint: 0.0.0.0:1777
+  zpages:
+    endpoint: 0.0.0.0:55679
+
+service:
+  extensions: [health_check, pprof, zpages]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch, memory_limiter, resource]
+      exporters: [jaeger, otlp, logging]
+    metrics:
+      receivers: [otlp]
+      processors: [batch, memory_limiter, resource]
+      exporters: [prometheus, otlp, logging]
+    logs:
+      receivers: [otlp]
+      processors: [batch, memory_limiter, resource]
+      exporters: [otlp, logging]

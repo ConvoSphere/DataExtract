@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: file-extractor-api
+  namespace: file-extractor
+  labels:
+    app: file-extractor-api
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8000"
+    prometheus.io/path: "/health"
+spec:
+  selector:
+    app: file-extractor-api
+  ports:
+  - name: http
+    port: 8000
+    targetPort: 8000
+    protocol: TCP
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: file-extractor-worker
+  namespace: file-extractor
+  labels:
+    app: file-extractor-worker
+spec:
+  selector:
+    app: file-extractor-worker
+  ports:
+  - name: http
+    port: 8000
+    targetPort: 8000
+    protocol: TCP
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: file-extractor-beat
+  namespace: file-extractor
+  labels:
+    app: file-extractor-beat
+spec:
+  selector:
+    app: file-extractor-beat
+  ports:
+  - name: http
+    port: 8000
+    targetPort: 8000
+    protocol: TCP
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: file-extractor-redis
+  namespace: file-extractor
+  labels:
+    app: file-extractor-redis
+spec:
+  selector:
+    app: file-extractor-redis
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379
+    protocol: TCP
+  type: ClusterIP

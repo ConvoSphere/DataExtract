@@ -10,7 +10,9 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from app.core.auth import check_rate_limit, get_current_user
 from app.core.config import settings
 from app.core.exceptions import FileExtractorException, convert_to_http_exception
+import time
 from app.core.logging import get_logger
+from app.core.metrics import record_extraction_start, record_extraction_success, record_extraction_error
 from app.extractors import get_extractor, is_format_supported
 from app.models.schemas import ErrorResponse, ExtractionResult
 
@@ -63,6 +65,8 @@ async def extract_file(
         500: Server-Fehler
     """
     try:
+        start_time = time.time()
+        
         # Logging für Extraktionsanfrage
         logger.info(
             'Extraction request received',
@@ -102,16 +106,46 @@ async def extract_file(
                     detail=f"Dateiformat '{Path(file.filename).suffix}' wird nicht unterstützt",
                 )
 
+            # Metrics für Extraktionsstart
+            record_extraction_start(
+                file_path=temp_file_path,
+                file_size=len(content),
+                file_type=temp_file_path.suffix.lower()
+            )
+
             # Passenden Extraktor finden
             extractor = get_extractor(temp_file_path)
 
             # Extraktion durchführen
-            return extractor.extract(
+            result = extractor.extract(
                 file_path=temp_file_path,
                 include_metadata=include_metadata,
                 include_text=include_text,
                 include_structure=include_structure,
             )
+
+            # Extraktionsdauer berechnen
+            duration = time.time() - start_time
+
+            # Metrics für erfolgreiche Extraktion
+            record_extraction_success(
+                file_path=temp_file_path,
+                duration=duration,
+                text_length=len(result.text) if result.text else 0,
+                word_count=len(result.text.split()) if result.text else 0
+            )
+
+            # Logging für erfolgreiche Extraktion
+            logger.info(
+                'Extraction completed successfully',
+                filename=file.filename,
+                file_size=len(content),
+                text_length=len(result.text) if result.text else 0,
+                word_count=len(result.text.split()) if result.text else 0,
+                duration=duration,
+            )
+
+            return result
 
 
         finally:
@@ -124,8 +158,24 @@ async def extract_file(
     except HTTPException:
         raise
     except FileExtractorException as e:
+        # Metrics für Extraktionsfehler
+        duration = time.time() - start_time
+        record_extraction_error(
+            file_path=Path(file.filename) if file.filename else Path("unknown"),
+            duration=duration,
+            error_type="FileExtractorException",
+            error_message=str(e)
+        )
         raise convert_to_http_exception(e)
     except Exception as e:
+        # Metrics für Extraktionsfehler
+        duration = time.time() - start_time
+        record_extraction_error(
+            file_path=Path(file.filename) if file.filename else Path("unknown"),
+            duration=duration,
+            error_type="Exception",
+            error_message=str(e)
+        )
         raise HTTPException(
             status_code=500,
             detail=f'Unerwarteter Fehler: {e!s}',

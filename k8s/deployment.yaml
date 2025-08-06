@@ -1,0 +1,224 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: file-extractor-api
+  namespace: file-extractor
+  labels:
+    app: file-extractor-api
+    version: v1
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: file-extractor-api
+  template:
+    metadata:
+      labels:
+        app: file-extractor-api
+        version: v1
+      annotations:
+        sidecar.istio.io/inject: "true"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/health"
+    spec:
+      containers:
+      - name: api
+        image: file-extractor:latest
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: SERVICE_NAME
+          value: "file-extractor-api"
+        - name: SERVICE_VERSION
+          value: "0.1.0"
+        - name: ENVIRONMENT
+          value: "production"
+        - name: ENABLE_OPENTELEMETRY
+          value: "true"
+        - name: ENABLE_METRICS
+          value: "true"
+        - name: ENABLE_TRACING
+          value: "true"
+        - name: OTLP_ENDPOINT
+          value: "http://otel-collector:4317"
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: REDIS_URL
+          value: "redis://file-extractor-redis:6379"
+        - name: MAX_FILE_SIZE
+          value: "157286400"
+        - name: ENABLE_ASYNC_PROCESSING
+          value: "true"
+        - name: MAX_CONCURRENT_EXTRACTIONS
+          value: "10"
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "1"
+          limits:
+            memory: "2Gi"
+            cpu: "2"
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: temp-storage
+          mountPath: /tmp/file_extractor
+      volumes:
+      - name: temp-storage
+        emptyDir: {}
+      restartPolicy: Always
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: file-extractor-worker
+  namespace: file-extractor
+  labels:
+    app: file-extractor-worker
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: file-extractor-worker
+  template:
+    metadata:
+      labels:
+        app: file-extractor-worker
+        version: v1
+      annotations:
+        sidecar.istio.io/inject: "true"
+    spec:
+      containers:
+      - name: worker
+        image: file-extractor:latest
+        command: ["celery"]
+        args: ["-A", "app.workers.tasks", "worker", "--loglevel=info", "--concurrency=4", "--max-tasks-per-child=1000"]
+        env:
+        - name: SERVICE_NAME
+          value: "file-extractor-worker"
+        - name: SERVICE_VERSION
+          value: "0.1.0"
+        - name: ENVIRONMENT
+          value: "production"
+        - name: ENABLE_OPENTELEMETRY
+          value: "true"
+        - name: ENABLE_METRICS
+          value: "true"
+        - name: ENABLE_TRACING
+          value: "true"
+        - name: OTLP_ENDPOINT
+          value: "http://otel-collector:4317"
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: REDIS_URL
+          value: "redis://file-extractor-redis:6379"
+        - name: MAX_FILE_SIZE
+          value: "157286400"
+        - name: ENABLE_ASYNC_PROCESSING
+          value: "true"
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "1"
+          limits:
+            memory: "2Gi"
+            cpu: "2"
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: temp-storage
+          mountPath: /tmp/file_extractor
+      volumes:
+      - name: temp-storage
+        emptyDir: {}
+      restartPolicy: Always
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: file-extractor-beat
+  namespace: file-extractor
+  labels:
+    app: file-extractor-beat
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: file-extractor-beat
+  template:
+    metadata:
+      labels:
+        app: file-extractor-beat
+        version: v1
+      annotations:
+        sidecar.istio.io/inject: "true"
+    spec:
+      containers:
+      - name: beat
+        image: file-extractor:latest
+        command: ["celery"]
+        args: ["-A", "app.workers.tasks", "beat", "--loglevel=info"]
+        env:
+        - name: SERVICE_NAME
+          value: "file-extractor-beat"
+        - name: SERVICE_VERSION
+          value: "0.1.0"
+        - name: ENVIRONMENT
+          value: "production"
+        - name: ENABLE_OPENTELEMETRY
+          value: "true"
+        - name: ENABLE_METRICS
+          value: "true"
+        - name: ENABLE_TRACING
+          value: "true"
+        - name: OTLP_ENDPOINT
+          value: "http://otel-collector:4317"
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: REDIS_URL
+          value: "redis://file-extractor-redis:6379"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "0.5"
+          limits:
+            memory: "1Gi"
+            cpu: "1"
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+      restartPolicy: Always
