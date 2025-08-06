@@ -136,8 +136,20 @@ class Settings(BaseSettings):
 
     # CORS Konfiguration
     cors_origins: list[str] = Field(
+        default=['http://localhost:3000', 'http://localhost:8080'],
+        description='Erlaubte CORS Origins (nicht * für Produktion)',
+    )
+    cors_allow_credentials: bool = Field(
+        default=False,
+        description='CORS Credentials erlauben',
+    )
+    cors_allow_methods: list[str] = Field(
+        default=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+        description='Erlaubte HTTP-Methoden für CORS',
+    )
+    cors_allow_headers: list[str] = Field(
         default=['*'],
-        description='Erlaubte CORS Origins',
+        description='Erlaubte HTTP-Headers für CORS',
     )
 
     # Logging
@@ -170,7 +182,7 @@ class Settings(BaseSettings):
     )
     enable_metrics: bool = Field(
         default=True,
-        description='Metriken aktivieren',
+        description='Metriken über OpenTelemetry aktivieren',
     )
 
     # OpenTelemetry-Konfiguration
@@ -180,15 +192,15 @@ class Settings(BaseSettings):
     )
     otlp_endpoint: str | None = Field(
         default=None,
-        description='OTLP Endpoint für Tracing und Metriken',
+        description='OTLP Endpoint für Tracing und Metriken (z.B. http://otel-collector:4317)',
     )
-    jaeger_host: str = Field(
-        default='jaeger',
-        description='Jaeger Host für Tracing',
+    otlp_headers: dict[str, str] = Field(
+        default={},
+        description='OTLP Headers für Authentifizierung',
     )
-    jaeger_port: int = Field(
-        default=6831,
-        description='Jaeger Port für Tracing',
+    enable_tracing: bool = Field(
+        default=True,
+        description='Distributed Tracing aktivieren',
     )
 
     # Logging-Konfiguration
@@ -203,6 +215,20 @@ class Settings(BaseSettings):
     enable_extraction_logging: bool = Field(
         default=True,
         description='Extraktions-Logging aktivieren',
+    )
+
+    # Microservice-spezifische Konfiguration
+    service_name: str = Field(
+        default='file-extractor',
+        description='Name des Microservices',
+    )
+    service_version: str = Field(
+        default='0.1.0',
+        description='Version des Microservices',
+    )
+    service_namespace: str = Field(
+        default='file-extractor',
+        description='Namespace für OpenTelemetry',
     )
 
     class Config:

@@ -16,10 +16,17 @@ from app.core.config import settings
 from app.core.exceptions import FileExtractorException, convert_to_http_exception
 from app.core.logging import (
     get_logger,
+    get_tracer,
     log_request_info,
     setup_opentelemetry,
     setup_structured_logging,
+    setup_custom_metrics,
 )
+from app.core.metrics import MetricsCollector, set_metrics_collector
+from app.core.security import get_security_middleware
+
+# Global metrics instance
+metrics = None
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
@@ -28,32 +35,44 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     def __init__(self, app):
         super().__init__(app)
         self.logger = get_logger('request_middleware')
+        self.tracer = get_tracer('request_middleware')
 
     async def dispatch(self, request: Request, call_next):
         start_time = time.time()
 
-        # Request verarbeiten
-        response = await call_next(request)
+        # Span für Request erstellen
+        with self.tracer.start_as_current_span("http_request") as span:
+            span.set_attribute("http.method", request.method)
+            span.set_attribute("http.url", str(request.url))
+            span.set_attribute("http.user_agent", request.headers.get('user-agent', ''))
+            span.set_attribute("http.client_ip", request.client.host if request.client else '')
 
-        # Verarbeitungszeit berechnen
-        process_time = time.time() - start_time
+            # Request verarbeiten
+            response = await call_next(request)
 
-        # Response-Header für Verarbeitungszeit hinzufügen
-        response.headers['X-Process-Time'] = str(process_time)
+            # Verarbeitungszeit berechnen
+            process_time = time.time() - start_time
 
-        # Strukturiertes Logging
-        if settings.enable_request_logging:
-            log_request_info(
-                self.logger,
-                {
-                    'method': request.method,
-                    'url': str(request.url),
-                    'status_code': response.status_code,
-                    'duration': process_time,
-                    'user_agent': request.headers.get('user-agent'),
-                    'client_ip': request.client.host if request.client else None,
-                },
-            )
+            # Span-Attribute setzen
+            span.set_attribute("http.status_code", response.status_code)
+            span.set_attribute("http.duration", process_time)
+
+            # Response-Header für Verarbeitungszeit hinzufügen
+            response.headers['X-Process-Time'] = str(process_time)
+
+            # Strukturiertes Logging
+            if settings.enable_request_logging:
+                log_request_info(
+                    self.logger,
+                    {
+                        'method': request.method,
+                        'url': str(request.url),
+                        'status_code': response.status_code,
+                        'duration': process_time,
+                        'user_agent': request.headers.get('user-agent'),
+                        'client_ip': request.client.host if request.client else None,
+                    },
+                )
 
         return response
 
@@ -63,25 +82,94 @@ async def lifespan(app: FastAPI):
     """Lifecycle-Management für die FastAPI-Anwendung."""
     # Startup
     logger = get_logger('startup')
+    tracer = get_tracer('startup')
 
-    # Logging und OpenTelemetry initialisieren
-    setup_structured_logging()
-    if settings.enable_opentelemetry:
-        setup_opentelemetry()
+    with tracer.start_as_current_span("application_startup") as span:
+        # Logging und OpenTelemetry initialisieren
+        setup_structured_logging()
+        
+        if settings.enable_opentelemetry:
+            setup_opentelemetry()
+            
+            # Custom Metrics initialisieren
+            global metrics
+            metrics = setup_custom_metrics()
+            
+            # Metrics Collector initialisieren
+            if metrics:
+                metrics_collector = MetricsCollector(metrics)
+                set_metrics_collector(metrics_collector)
+            
+            # FastAPI Instrumentation
+            from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+            FastAPIInstrumentor.instrument_app(app)
 
-    logger.info(
-        'Application starting',
-        app_name=settings.app_name,
-        version=settings.app_version,
-        supported_formats_count=len(settings.allowed_extensions),
-        debug_mode=settings.debug,
-        environment=settings.environment,
-    )
+        span.set_attribute("app.name", settings.app_name)
+        span.set_attribute("app.version", settings.app_version)
+        span.set_attribute("app.environment", settings.environment)
+
+        logger.info(
+            'Application starting',
+            app_name=settings.app_name,
+            version=settings.app_version,
+            supported_formats_count=len(settings.allowed_extensions),
+            debug_mode=settings.debug,
+            environment=settings.environment,
+            otlp_enabled=settings.enable_opentelemetry,
+            otlp_endpoint=settings.otlp_endpoint,
+        )
 
     yield
 
-    # Shutdown
-    logger.info('Application shutting down')
+    # Graceful Shutdown
+    logger.info('Application shutting down - starting graceful shutdown')
+    
+    try:
+        # 1. Health Check auf "unhealthy" setzen
+        logger.info('Setting health status to unhealthy')
+        
+        # 2. Neue Requests ablehnen
+        logger.info('Rejecting new requests')
+        
+        # 3. In-flight Requests warten lassen
+        logger.info('Waiting for in-flight requests to complete')
+        
+        # 4. OpenTelemetry Exporters schließen
+        if settings.enable_opentelemetry:
+            logger.info('Closing OpenTelemetry exporters')
+            try:
+                from opentelemetry import trace
+                trace.get_tracer_provider().shutdown()
+            except Exception as e:
+                logger.warning(f'Error shutting down OpenTelemetry: {e}')
+        
+        # 5. Redis-Verbindungen schließen
+        logger.info('Closing Redis connections')
+        try:
+            from app.core.queue import get_job_queue
+            queue = get_job_queue()
+            if hasattr(queue, 'redis_client'):
+                queue.redis_client.close()
+        except Exception as e:
+            logger.warning(f'Error closing Redis connections: {e}')
+        
+        # 6. Temporäre Dateien bereinigen
+        logger.info('Cleaning up temporary files')
+        try:
+            import tempfile
+            import shutil
+            temp_dir = Path(tempfile.gettempdir()) / 'file_extractor'
+            if temp_dir.exists():
+                shutil.rmtree(temp_dir, ignore_errors=True)
+        except Exception as e:
+            logger.warning(f'Error cleaning up temp files: {e}')
+        
+        logger.info('Graceful shutdown completed')
+        
+    except Exception as e:
+        logger.error(f'Error during graceful shutdown: {e}')
+    
+    logger.info('Application shutdown complete')
 
 
 # FastAPI-Anwendung erstellen
@@ -96,39 +184,46 @@ app = FastAPI(
     * **Multiple Formats**: Unterstützung für PDF, DOCX, TXT, CSV, JSON, XML und mehr
     * **Modular Architecture**: Saubere, wartbare Code-Struktur
     * **Comprehensive Documentation**: Vollständige API-Dokumentation
+    * **OpenTelemetry Integration**: Distributed Tracing und Metriken
 
     ## Unterstützte Formate
 
-    * **PDF**: Text und Metadaten aus PDF-Dateien
-    * **DOCX**: Text, Metadaten und Struktur aus Word-Dokumenten
-    * **TXT**: Einfache Textdateien
-    * **CSV**: Tabellarische Daten
-    * **JSON**: Strukturierte JSON-Daten
-    * **XML/HTML**: XML-Dokumente und HTML-Seiten
+    * **Dokumente**: PDF, DOCX, TXT, RTF, ODT, DOC
+    * **Tabellen**: XLSX, XLS, ODS, CSV
+    * **Präsentationen**: PPTX, PPT, ODP
+    * **Datenformate**: JSON, XML, HTML, YAML
+    * **Bilder**: JPG, PNG, GIF, BMP, TIFF, WebP, SVG
+    * **Medien**: MP4, AVI, MOV, MP3, WAV, FLAC
+    * **Archive**: ZIP, RAR, 7Z, TAR, GZ
 
-    ## Verwendung
+    ## Microservice Features
 
-    1. Laden Sie eine Datei über den `/extract` Endpoint hoch
-    2. Die API erkennt automatisch das Dateiformat
-    3. Sie erhalten extrahierten Text, Metadaten und strukturierte Daten zurück
+    * **Health Checks**: `/health/live`, `/health/ready`
+    * **OpenTelemetry**: Distributed Tracing und Metriken
+    * **Structured Logging**: JSON-basiertes Logging
+    * **Async Processing**: Celery-basierte asynchrone Verarbeitung
     """,
     version=settings.app_version,
-    docs_url='/docs',
-    redoc_url='/redoc',
-    openapi_url='/openapi.json',
+    docs_url='/docs' if settings.debug else None,
+    redoc_url='/redoc' if settings.debug else None,
+    openapi_url='/openapi.json' if settings.debug else None,
     lifespan=lifespan,
 )
 
-# Middleware hinzufügen
+# Security Middleware hinzufügen
+for middleware_class in get_security_middleware():
+    app.add_middleware(middleware_class)
+
+# Request Logging Middleware
 app.add_middleware(RequestLoggingMiddleware)
 
-# CORS-Middleware
+# CORS-Middleware (sicher konfiguriert)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
-    allow_credentials=True,
-    allow_methods=['*'],
-    allow_headers=['*'],
+    allow_credentials=settings.cors_allow_credentials,
+    allow_methods=settings.cors_allow_methods,
+    allow_headers=settings.cors_allow_headers,
 )
 
 # Trusted Host Middleware (für Produktion)

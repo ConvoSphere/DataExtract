@@ -84,10 +84,14 @@ jobs:
       run: |
         uv sync --group dev
 
-    - name: Run security checks
+    - name: Install security tools
       run: |
-        uv run bandit -r app/ -f json -o bandit-report.json || true
-        uv run safety check --json --output safety-report.json || true
+        pip install bandit safety detect-secrets semgrep trivy
+
+    - name: Run comprehensive security scan
+      run: |
+        chmod +x security-scan.sh
+        ./security-scan.sh
 
     - name: Upload security reports
       uses: actions/upload-artifact@v3
@@ -96,6 +100,24 @@ jobs:
         path: |
           bandit-report.json
           safety-report.json
+          trivy-report.json
+          semgrep-report.json
+          security-report.md
+          .secrets.baseline
+
+    - name: Fail on critical security issues
+      run: |
+        if [ -f bandit-report.json ] && grep -q '"severity": "HIGH"' bandit-report.json; then
+          echo "❌ Critical security issues found in code!"
+          exit 1
+        fi
+        
+        if [ -f trivy-report.json ] && grep -q '"Severity": "CRITICAL"' trivy-report.json; then
+          echo "❌ Critical container vulnerabilities found!"
+          exit 1
+        fi
+        
+        echo "✅ Security scan passed!"
 
   docker-build:
     runs-on: ubuntu-latest
