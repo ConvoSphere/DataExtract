@@ -99,10 +99,6 @@ async def lifespan(app: FastAPI):
             if metrics:
                 metrics_collector = MetricsCollector(metrics)
                 set_metrics_collector(metrics_collector)
-            
-            # FastAPI Instrumentation
-            from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-            FastAPIInstrumentor.instrument_app(app)
 
         span.set_attribute("app.name", settings.app_name)
         span.set_attribute("app.version", settings.app_version)
@@ -209,6 +205,14 @@ app = FastAPI(
     openapi_url='/openapi.json' if settings.debug else None,
     lifespan=lifespan,
 )
+
+# OpenTelemetry Instrumentation (muss vor anderen Middlewares hinzugefügt werden)
+if settings.enable_opentelemetry:
+    try:
+        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+        FastAPIInstrumentor.instrument_app(app)
+    except Exception as e:
+        print(f"Warning: OpenTelemetry instrumentation failed: {e}")
 
 # Security Middleware hinzufügen
 for middleware_class in get_security_middleware():
