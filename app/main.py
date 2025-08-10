@@ -4,6 +4,7 @@ Haupt-Anwendung für die Universal File Extractor API.
 
 import time
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -234,7 +235,7 @@ app.add_middleware(
 if not settings.debug:
     app.add_middleware(
         TrustedHostMiddleware,
-        allowed_hosts=['*'],  # In Produktion spezifische Hosts angeben
+        allowed_hosts=[h.strip() for h in settings.allowed_hosts.split(',') if h.strip()],
     )
 
 # Exception Handler für FileExtractorException

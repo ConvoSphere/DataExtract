@@ -170,11 +170,8 @@ class FileValidator:
                 return True, "", file_info
 
             finally:
-                # Temporäre Datei löschen (wird später wieder erstellt)
-                try:
-                    temp_file_path.unlink()
-                except Exception:
-                    pass
+                # Do not delete temp file here; routes are responsible for cleanup after processing
+                pass
 
         except Exception as e:
             logger.error(f'File validation error: {e}')

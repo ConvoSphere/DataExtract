@@ -76,7 +76,7 @@ class TestMicroservicePerformance:
         print(f"5 requests with metrics: {duration:.3f}s")
 
     @pytest.mark.asyncio
-    async def test_open telemetry_overhead(self, client: AsyncClient):
+    async def test_opentelemetry_overhead(self, client: AsyncClient):
         """Testet OpenTelemetry Overhead."""
         # Test ohne OpenTelemetry (falls konfigurierbar)
         # vs. mit OpenTelemetry

@@ -92,7 +92,7 @@ class JobQueue:
 
         # Celery-Task starten
         task = self.celery_app.send_task(
-            'app.workers.extract_file',
+            'app.workers.tasks.extract_file',
             args=[job_id],
             priority=self._get_priority_value(priority),
         )

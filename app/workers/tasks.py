@@ -6,11 +6,21 @@ import time
 from pathlib import Path
 from typing import Any
 
+from celery import Celery
+from app.core.config import settings
 from celery import current_task
 
 from app.core.queue import get_job_queue
 from app.core.metrics import record_extraction_start, record_extraction_success, record_extraction_error, record_job_status_change
 from app.extractors import get_extractor
+
+
+celery = Celery('file_extractor', broker=settings.redis_url, backend=settings.redis_url)
+
+
+@celery.task(name='app.workers.tasks.extract_file')
+def extract_file(job_id: str) -> dict[str, Any]:
+    return extract_file_task(job_id)
 
 
 def extract_file_task(job_id: str) -> dict[str, Any]:
@@ -99,8 +109,8 @@ def extract_file_task(job_id: str) -> dict[str, Any]:
         record_extraction_success(
             file_path=file_path,
             duration=duration,
-            text_length=len(result.text) if result.text else 0,
-            word_count=len(result.text.split()) if result.text else 0
+            text_length=(len(result.get('extracted_text', {}).get('content', '')) if isinstance(result, dict) else 0),
+            word_count=(result.get('extracted_text', {}).get('word_count', 0) if isinstance(result, dict) else 0)
         )
 
         # Fortschritt melden
@@ -195,7 +205,3 @@ def extract_file_task(job_id: str) -> dict[str, Any]:
             pass
 
         raise e
-
-
-# Task-Registrierung für Celery
-extract_file = extract_file_task

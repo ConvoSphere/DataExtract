@@ -168,7 +168,15 @@ class RateLimiter:
         try:
             import redis
             from app.core.config import settings
-            self.redis_client = redis.from_url(settings.redis_url, db=settings.redis_db)
+            client = redis.from_url(settings.redis_url, db=settings.redis_db)
+            # Probe connection; fall back if not reachable
+            try:
+                client.ping()
+                self.redis_client = client
+                logger.info('RateLimiter: Redis backend enabled')
+            except Exception as e:
+                logger.warning(f'RateLimiter: Redis not reachable, falling back to in-memory: {e}')
+                self.redis_client = None
         except ImportError:
             logger.warning('Redis not available, using in-memory rate limiting')
             self.redis_client = None
@@ -188,26 +196,30 @@ class RateLimiter:
             # Fallback: In-Memory Rate Limiting (nicht für Produktion)
             return True
 
-        rate_limit = user_info.get('rate_limit', 10)
-        window_seconds = 60  # 1 Minute Window
+        try:
+            rate_limit = user_info.get('rate_limit', 10)
+            window_seconds = 60  # 1 Minute Window
 
-        # Redis-basiertes Rate Limiting
-        key = f'rate_limit:{api_key}'
-        current = self.redis_client.get(key)
-        
-        if current is None:
-            # Erster Request im Window
-            self.redis_client.setex(key, window_seconds, 1)
+            # Redis-basiertes Rate Limiting
+            key = f'rate_limit:{api_key}'
+            current = self.redis_client.get(key)
+            
+            if current is None:
+                # Erster Request im Window
+                self.redis_client.setex(key, window_seconds, 1)
+                return True
+            
+            current_count = int(current)
+            if current_count >= rate_limit:
+                logger.warning(f'Rate limit exceeded for user: {user_info["name"]}')
+                return False
+            
+            # Increment Counter
+            self.redis_client.incr(key)
             return True
-        
-        current_count = int(current)
-        if current_count >= rate_limit:
-            logger.warning(f'Rate limit exceeded for user: {user_info["name"]}')
-            return False
-        
-        # Increment Counter
-        self.redis_client.incr(key)
-        return True
+        except Exception as e:
+            logger.warning(f'RateLimiter: error using Redis, allowing request: {e}')
+            return True
 
 
 # Globale Rate Limiter Instanz
