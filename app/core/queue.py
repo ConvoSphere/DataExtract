@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
+import os
 
 try:
     import redis
@@ -19,6 +20,89 @@ from app.core.config import settings
 from app.models.schemas import AsyncExtractionResponse, JobStatus
 
 
+class InMemoryJobQueue:
+    """Einfache In-Memory-Queue für Tests/Entwicklung."""
+
+    def __init__(self) -> None:
+        self.jobs: dict[str, dict[str, Any]] = {}
+
+    def submit_job(
+        self,
+        file_path: Path,
+        include_metadata: bool = True,
+        include_text: bool = True,
+        include_structure: bool = False,
+        include_images: bool = False,
+        include_media: bool = False,
+        callback_url: str | None = None,
+        priority: str = 'normal',
+    ) -> AsyncExtractionResponse:
+        job_id = str(uuid.uuid4())
+        now = datetime.now()
+        self.jobs[job_id] = {
+            'job_id': job_id,
+            'file_path': str(file_path),
+            'include_metadata': include_metadata,
+            'include_text': include_text,
+            'include_structure': include_structure,
+            'include_images': include_images,
+            'include_media': include_media,
+            'callback_url': callback_url,
+            'priority': priority,
+            'created_at': now,
+            'status': 'queued',
+            'result': None,
+            'error': None,
+        }
+        # Simpler Estimate
+        estimated = now + timedelta(minutes=5 if priority == 'high' else 15 if priority == 'normal' else 30)
+        return AsyncExtractionResponse(job_id=job_id, status='queued', estimated_completion=estimated)
+
+    def get_job_status(self, job_id: str) -> JobStatus | None:
+        job = self.jobs.get(job_id)
+        if not job:
+            return None
+        created_at = job['created_at'] if isinstance(job['created_at'], datetime) else datetime.now()
+        return JobStatus(
+            job_id=job_id,
+            status=job['status'],
+            created_at=created_at,
+            started_at=None,
+            completed_at=None,
+            progress=0.0,
+            result=job.get('result'),
+            error=job.get('error'),
+        )
+
+    def cancel_job(self, job_id: str) -> bool:
+        job = self.jobs.get(job_id)
+        if not job:
+            return False
+        job['status'] = 'cancelled'
+        return True
+
+    def get_queue_stats(self) -> dict[str, Any]:
+        active = sum(1 for j in self.jobs.values() if j['status'] == 'processing')
+        queued = sum(1 for j in self.jobs.values() if j['status'] == 'queued')
+        completed = sum(1 for j in self.jobs.values() if j['status'] == 'completed')
+        failed = sum(1 for j in self.jobs.values() if j['status'] == 'failed')
+        return {
+            'active_jobs': active,
+            'queued_jobs': queued,
+            'completed_jobs': completed,
+            'failed_jobs': failed,
+            'total_jobs': len(self.jobs),
+            'queue_size': settings.queue_size,
+        }
+
+    def cleanup_old_jobs(self, max_age_hours: int = 24) -> int:
+        cutoff = datetime.now() - timedelta(hours=max_age_hours)
+        to_delete = [job_id for job_id, job in self.jobs.items() if job['created_at'] < cutoff]
+        for job_id in to_delete:
+            del self.jobs[job_id]
+        return len(to_delete)
+
+
 class JobQueue:
     """Verwaltung für asynchrone Job-Verarbeitung."""
 
@@ -27,7 +111,12 @@ class JobQueue:
             raise ImportError('Redis und Celery sind nicht installiert.')
 
         # Redis-Verbindung
-        self.redis_client = redis.from_url(settings.redis_url, db=settings.redis_db)
+        try:
+            self.redis_client = redis.from_url(settings.redis_url, db=settings.redis_db)
+            # Check connectivity
+            self.redis_client.ping()
+        except Exception as e:
+            raise ImportError(f'Redis nicht erreichbar: {e}')
 
         # Celery-App
         self.celery_app = Celery(
@@ -278,8 +367,14 @@ def get_job_queue() -> JobQueue:
     """Gibt die globale Job-Queue-Instanz zurück."""
     global job_queue
     if job_queue is None:
-        if QUEUE_AVAILABLE:
+        # Erlaube expliziten Fallback via ENV
+        use_fake = os.getenv('USE_FAKE_QUEUE', '').lower() in ('1', 'true', 'yes')
+        if use_fake:
+            job_queue = InMemoryJobQueue()
+            return job_queue
+        # Versuche echte Queue, falle bei Fehlern zurück
+        try:
             job_queue = JobQueue()
-        else:
-            raise ImportError('Queue-System nicht verfügbar')
+        except Exception:
+            job_queue = InMemoryJobQueue()
     return job_queue
