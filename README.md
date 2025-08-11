@@ -334,3 +334,20 @@ Dieses Projekt steht unter der MIT-Lizenz. Siehe [LICENSE](LICENSE) für Details
 ---
 
 **Entwickelt mit ❤️, FastAPI, docling, UV und Ruff**
+
+## 🧪 Tests
+
+```bash
+# Lokale Tests mit In-Memory-Queue (keine externen Services nötig)
+export USE_FAKE_QUEUE=1
+uv run pytest -q
+```
+
+Hinweise:
+- Asynchrone Endpoints nutzen in Tests eine In-Memory-Queue (`USE_FAKE_QUEUE=1`), damit Redis/Celery nicht benötigt werden.
+- Performance-/Skalierungstests sind toleranzbasiert, um Umgebungsvariabilität zu berücksichtigen. Ergebnisse können lokal/CI variieren.
+
+## CI
+
+- Die CI setzt `USE_FAKE_QUEUE=1` für den Test-Job, damit asynchrone Tests ohne Redis/Celery zuverlässig laufen.
+- Security-Scan installiert Trivy korrekt über das APT-Repository.
