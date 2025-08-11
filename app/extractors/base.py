@@ -190,9 +190,9 @@ class BaseExtractor(ABC):
             # Optionale CPU-Last simulieren für Tests (linear mit Dateigröße)
             if settings.simulate_processing and not settings.environment == 'production':
                 file_size_kb = max(1, file_path.stat().st_size // 1024)
-                # rudimentäre Last: einfache Schleife proportional zur Größe
+                # rudimentäre Last: einfache Schleife proportional zur Größe (verstärkt)
                 dummy = 0
-                for _ in range(min(file_size_kb * 200, 200000)):
+                for _ in range(min(file_size_kb * 2000, 1000000)):
                     dummy += 1
 
             extraction_time = time.time() - start_time

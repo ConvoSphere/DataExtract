@@ -9,7 +9,7 @@ from typing import List
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 
 from app.main import app
 
@@ -17,7 +17,8 @@ from app.main import app
 @pytest_asyncio.fixture
 async def client():
     """AsyncClient für Tests (module-level)."""
-    async with AsyncClient(app=app, base_url="http://test") as c:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as c:
         yield c
 
 class TestMicroservicePerformance:
