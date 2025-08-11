@@ -10,6 +10,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api import api_router
@@ -246,6 +247,24 @@ async def file_extractor_exception_handler(request: Request, exc: FileExtractorE
     return JSONResponse(
         status_code=http_exception.status_code,
         content=http_exception.detail,
+    )
+
+# Exception Handler für Validierungsfehler
+@app.exception_handler(RequestValidationError)
+async def request_validation_exception_handler(request: Request, exc: RequestValidationError):
+    content_type = request.headers.get('content-type', '')
+    path = str(request.url.path)
+    if path.endswith('/api/v1/extract') and content_type.startswith('multipart/form-data'):
+        return JSONResponse(
+            status_code=400,
+            content={
+                'error': 'BAD_REQUEST',
+                'message': 'Ungültiger Datei-Upload',
+            },
+        )
+    return JSONResponse(
+        status_code=422,
+        content={'detail': 'Validation error'},
     )
 
 # Exception Handler für allgemeine Exceptions

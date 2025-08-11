@@ -16,7 +16,8 @@ from app.main import app
 class TestMicroservicePerformance:
     """Performance-Tests für den Microservice."""
 
-    @pytest.fixture
+    import pytest_asyncio
+    @pytest_asyncio.fixture
     async def client(self):
         """AsyncClient für Tests."""
         async with AsyncClient(app=app, base_url="http://test") as client:
