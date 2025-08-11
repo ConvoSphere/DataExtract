@@ -70,11 +70,11 @@ install:
 
 test:
 	@echo "Running tests..."
-	uv run pytest tests/ -v --cov=app --cov-report=term-missing
+	USE_FAKE_QUEUE=1 uv run pytest tests/ -v --cov=app --cov-report=term-missing
 
 test-coverage:
 	@echo "Running tests with coverage report..."
-	uv run pytest tests/ --cov=app --cov-report=html --cov-report=xml
+	USE_FAKE_QUEUE=1 uv run pytest tests/ --cov=app --cov-report=html --cov-report=xml
 
 quality: format lint type-check security
 	@echo "All quality checks completed!"
@@ -215,12 +215,12 @@ restore:
 # Performance testing
 perf-test:
 	@echo "Running performance tests..."
-	uv run pytest tests/test_performance.py -v
+	USE_FAKE_QUEUE=1 uv run pytest tests/test_performance.py -v
 
 # Integration testing
 integration-test:
 	@echo "Running integration tests..."
-	uv run pytest tests/integration/ -v
+	USE_FAKE_QUEUE=1 uv run pytest tests/integration/ -v
 
 # Load testing
 load-test:

@@ -125,7 +125,8 @@ class FileValidator:
             extension = file_path.suffix.lower()
             
             if extension not in self.allowed_extensions:
-                return False, f"Nicht unterstützte Dateiendung: {extension}", None
+                # Signalisiere 415 Unsupported Media Type via spezielle Nachricht
+                return False, f"UNSUPPORTED_EXTENSION:{extension}", None
 
             # 4. Temporäre Datei erstellen für weitere Validierung
             with tempfile.NamedTemporaryFile(delete=False, suffix=extension) as temp_file:
@@ -170,11 +171,8 @@ class FileValidator:
                 return True, "", file_info
 
             finally:
-                # Temporäre Datei löschen (wird später wieder erstellt)
-                try:
-                    temp_file_path.unlink()
-                except Exception:
-                    pass
+                # Do not delete temp file here; routes are responsible for cleanup after processing
+                pass
 
         except Exception as e:
             logger.error(f'File validation error: {e}')
@@ -323,6 +321,12 @@ async def validate_file_upload(file: UploadFile) -> dict:
     
     if not is_valid:
         logger.warning(f'File validation failed: {error_message}')
+        # Mappe spezifische Validierungsfehler auf passende Statuscodes
+        if error_message.startswith('UNSUPPORTED_EXTENSION:'):
+            raise HTTPException(
+                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                detail=f"Nicht unterstützte Dateiendung: {error_message.split(':',1)[1]}",
+            )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=error_message,

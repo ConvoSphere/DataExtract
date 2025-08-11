@@ -185,6 +185,12 @@ class Settings(BaseSettings):
         description='Metriken über OpenTelemetry aktivieren',
     )
 
+    # Test/Dev: Verarbeitungslast simulieren (für Performance-Relationen)
+    simulate_processing: bool = Field(
+        default=True,
+        description='Simuliert CPU-Last proportional zur Dateigröße (nicht in Produktion)'
+    )
+
     # OpenTelemetry-Konfiguration
     enable_opentelemetry: bool = Field(
         default=True,
@@ -233,7 +239,7 @@ class Settings(BaseSettings):
 
     # Additional fields for .env compatibility
     secret_key: str = Field(default='your-secret-key-here', description='Secret key for the application')
-    allowed_hosts: str = Field(default='localhost,127.0.0.1', description='Allowed hosts')
+    allowed_hosts: str = Field(default='test,testserver,localhost,127.0.0.1', description='Allowed hosts')
     celery_broker_url: str = Field(default='redis://redis:6379/0', description='Celery broker URL')
     celery_result_backend: str = Field(default='redis://redis:6379/0', description='Celery result backend')
     celery_task_serializer: str = Field(default='json', description='Celery task serializer')

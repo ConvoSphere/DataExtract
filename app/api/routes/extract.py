@@ -14,7 +14,7 @@ from app.core.validation import validate_file_upload
 import time
 from app.core.logging import get_logger
 from app.core.metrics import record_extraction_start, record_extraction_success, record_extraction_error
-from app.extractors import get_extractor, is_format_supported
+from app.extractors import get_extractor, is_format_supported, get_supported_formats as list_supported_formats
 from app.models.schemas import ErrorResponse, ExtractionResult
 
 router = APIRouter()
@@ -95,7 +95,7 @@ async def extract_file(
             # Metrics für Extraktionsstart
             record_extraction_start(
                 file_path=temp_file_path,
-                file_size=len(content),
+                file_size=file_info['size'],
                 file_type=temp_file_path.suffix.lower()
             )
 
@@ -110,6 +110,13 @@ async def extract_file(
                 include_structure=include_structure,
             )
 
+            # Originaler Dateiname in den Metadaten beibehalten
+            try:
+                if result.file_metadata and file and file.filename:
+                    result.file_metadata.filename = file.filename
+            except Exception:
+                pass
+
             # Extraktionsdauer berechnen
             duration = time.time() - start_time
 
@@ -117,17 +124,17 @@ async def extract_file(
             record_extraction_success(
                 file_path=temp_file_path,
                 duration=duration,
-                text_length=len(result.text) if result.text else 0,
-                word_count=len(result.text.split()) if result.text else 0
+                text_length=len(result.extracted_text.content) if result.extracted_text and result.extracted_text.content else 0,
+                word_count=result.extracted_text.word_count if result.extracted_text and result.extracted_text.word_count is not None else 0
             )
 
             # Logging für erfolgreiche Extraktion
             logger.info(
                 'Extraction completed successfully',
                 filename=file.filename,
-                file_size=len(content),
-                text_length=len(result.text) if result.text else 0,
-                word_count=len(result.text.split()) if result.text else 0,
+                file_size=file_info['size'],
+                text_length=len(result.extracted_text.content) if result.extracted_text and result.extracted_text.content else 0,
+                word_count=result.extracted_text.word_count if result.extracted_text and result.extracted_text.word_count is not None else 0,
                 duration=duration,
             )
 
@@ -181,16 +188,17 @@ async def get_supported_formats():
         Liste der unterstützten Formate mit Details
     """
     try:
-        formats = get_supported_formats()
+        formats = list_supported_formats()
 
         # Formate in das erwartete Schema konvertieren
         supported_formats = []
         for format_info in formats:
-            for extension in format_info.get('extensions', []):
+            for extension in format_info.get('supported_extensions', []):
+                mime_types = format_info.get('supported_mime_types', [])
                 supported_formats.append({
                     'extension': extension,
-                    'mime_type': format_info.get('mime_types', [''])[0] if format_info.get('mime_types') else 'application/octet-stream',
-                    'description': f"Unterstützt durch {format_info['class']}",
+                    'mime_type': mime_types[0] if mime_types else 'application/octet-stream',
+                    'description': f"Unterstützt durch {format_info.get('extractor')}",
                     'features': ['text_extraction', 'metadata_extraction'],
                     'max_size': format_info.get('max_file_size'),
                 })

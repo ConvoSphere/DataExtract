@@ -8,19 +8,21 @@ from pathlib import Path
 from typing import List
 
 import pytest
-from httpx import AsyncClient
+import pytest_asyncio
+from httpx import AsyncClient, ASGITransport
 
 from app.main import app
 
 
+@pytest_asyncio.fixture
+async def client():
+    """AsyncClient für Tests (module-level)."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test/api/v1") as c:
+        yield c
+
 class TestMicroservicePerformance:
     """Performance-Tests für den Microservice."""
-
-    @pytest.fixture
-    async def client(self):
-        """AsyncClient für Tests."""
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            yield client
 
     @pytest.mark.asyncio
     async def test_health_endpoint_performance(self, client: AsyncClient):
@@ -76,7 +78,7 @@ class TestMicroservicePerformance:
         print(f"5 requests with metrics: {duration:.3f}s")
 
     @pytest.mark.asyncio
-    async def test_open telemetry_overhead(self, client: AsyncClient):
+    async def test_opentelemetry_overhead(self, client: AsyncClient):
         """Testet OpenTelemetry Overhead."""
         # Test ohne OpenTelemetry (falls konfigurierbar)
         # vs. mit OpenTelemetry

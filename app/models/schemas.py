@@ -354,10 +354,10 @@ class HealthResponse(BaseModel):
     timestamp: datetime = Field(description='Zeitstempel')
     uptime: float = Field(description='Uptime in Sekunden')
     supported_formats_count: int = Field(description='Anzahl unterstützter Formate')
-    # Neue Felder
-    active_jobs: int = Field(description='Aktive Jobs')
-    queue_size: int = Field(description='Warteschlangengröße')
-    worker_status: str = Field(description='Worker-Status')
+    # Neue Felder (optional mit Defaults)
+    active_jobs: int = Field(default=0, description='Aktive Jobs')
+    queue_size: int = Field(default=0, description='Warteschlangengröße')
+    worker_status: str = Field(default='unknown', description='Worker-Status')
 
 
 class ErrorResponse(BaseModel):
