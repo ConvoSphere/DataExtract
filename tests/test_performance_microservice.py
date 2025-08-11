@@ -8,20 +8,20 @@ from pathlib import Path
 from typing import List
 
 import pytest
+import pytest_asyncio
 from httpx import AsyncClient
 
 from app.main import app
 
 
+@pytest_asyncio.fixture
+async def client():
+    """AsyncClient für Tests (module-level)."""
+    async with AsyncClient(app=app, base_url="http://test") as c:
+        yield c
+
 class TestMicroservicePerformance:
     """Performance-Tests für den Microservice."""
-
-    import pytest_asyncio
-    @pytest_asyncio.fixture
-    async def client(self):
-        """AsyncClient für Tests."""
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            yield client
 
     @pytest.mark.asyncio
     async def test_health_endpoint_performance(self, client: AsyncClient):

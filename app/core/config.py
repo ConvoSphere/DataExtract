@@ -185,6 +185,12 @@ class Settings(BaseSettings):
         description='Metriken über OpenTelemetry aktivieren',
     )
 
+    # Test/Dev: Verarbeitungslast simulieren (für Performance-Relationen)
+    simulate_processing: bool = Field(
+        default=True,
+        description='Simuliert CPU-Last proportional zur Dateigröße (nicht in Produktion)'
+    )
+
     # OpenTelemetry-Konfiguration
     enable_opentelemetry: bool = Field(
         default=True,
