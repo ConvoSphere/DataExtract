@@ -18,7 +18,7 @@ from app.main import app
 async def client():
     """AsyncClient für Tests (module-level)."""
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as c:
+    async with AsyncClient(transport=transport, base_url="http://test/api/v1") as c:
         yield c
 
 class TestMicroservicePerformance:
