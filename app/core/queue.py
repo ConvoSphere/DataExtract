@@ -2,16 +2,17 @@
 Queue-Verwaltung für asynchrone Verarbeitung.
 """
 
+import os
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
-import os
 
 try:
     import redis
     from celery import Celery
     from celery.result import AsyncResult
+
     QUEUE_AVAILABLE = True
 except ImportError:
     QUEUE_AVAILABLE = False
@@ -55,14 +56,22 @@ class InMemoryJobQueue:
             'error': None,
         }
         # Simpler Estimate
-        estimated = now + timedelta(minutes=5 if priority == 'high' else 15 if priority == 'normal' else 30)
-        return AsyncExtractionResponse(job_id=job_id, status='queued', estimated_completion=estimated)
+        estimated = now + timedelta(
+            minutes=5 if priority == 'high' else 15 if priority == 'normal' else 30,
+        )
+        return AsyncExtractionResponse(
+            job_id=job_id, status='queued', estimated_completion=estimated,
+        )
 
     def get_job_status(self, job_id: str) -> JobStatus | None:
         job = self.jobs.get(job_id)
         if not job:
             return None
-        created_at = job['created_at'] if isinstance(job['created_at'], datetime) else datetime.now()
+        created_at = (
+            job['created_at']
+            if isinstance(job['created_at'], datetime)
+            else datetime.now()
+        )
         return JobStatus(
             job_id=job_id,
             status=job['status'],
@@ -97,7 +106,9 @@ class InMemoryJobQueue:
 
     def cleanup_old_jobs(self, max_age_hours: int = 24) -> int:
         cutoff = datetime.now() - timedelta(hours=max_age_hours)
-        to_delete = [job_id for job_id, job in self.jobs.items() if job['created_at'] < cutoff]
+        to_delete = [
+            job_id for job_id, job in self.jobs.items() if job['created_at'] < cutoff
+        ]
         for job_id in to_delete:
             del self.jobs[job_id]
         return len(to_delete)
@@ -243,7 +254,9 @@ class JobQueue:
         status = status_mapping.get(celery_status, 'unknown')
 
         # Zeitstempel
-        created_at = datetime.fromisoformat(job_data.get('created_at', datetime.now().isoformat()))
+        created_at = datetime.fromisoformat(
+            job_data.get('created_at', datetime.now().isoformat()),
+        )
         started_at = None
         completed_at = None
 

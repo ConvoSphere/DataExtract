@@ -11,6 +11,7 @@ try:
     import speech_recognition as sr
     from moviepy.editor import AudioFileClip, VideoFileClip
     from pydub import AudioSegment
+
     MEDIA_AVAILABLE = True
 except ImportError:
     MEDIA_AVAILABLE = False
@@ -35,24 +36,46 @@ class MediaExtractor(BaseExtractor):
 
         self.supported_extensions = [
             # Video
-            '.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm', '.mkv', '.m4v',
+            '.mp4',
+            '.avi',
+            '.mov',
+            '.wmv',
+            '.flv',
+            '.webm',
+            '.mkv',
+            '.m4v',
             # Audio
-            '.mp3', '.wav', '.flac', '.aac', '.ogg', '.m4a', '.wma',
+            '.mp3',
+            '.wav',
+            '.flac',
+            '.aac',
+            '.ogg',
+            '.m4a',
+            '.wma',
         ]
         self.supported_mime_types = [
             # Video
-            'video/mp4', 'video/avi', 'video/quicktime', 'video/x-ms-wmv',
-            'video/x-flv', 'video/webm', 'video/x-matroska',
+            'video/mp4',
+            'video/avi',
+            'video/quicktime',
+            'video/x-ms-wmv',
+            'video/x-flv',
+            'video/webm',
+            'video/x-matroska',
             # Audio
-            'audio/mpeg', 'audio/wav', 'audio/flac', 'audio/aac', 'audio/ogg',
+            'audio/mpeg',
+            'audio/wav',
+            'audio/flac',
+            'audio/aac',
+            'audio/ogg',
         ]
         self.max_file_size = 150 * 1024 * 1024  # 150MB
 
     def can_extract(self, file_path: Path, mime_type: str) -> bool:
         """Prüft, ob der Extraktor die Mediendatei verarbeiten kann."""
         return (
-            file_path.suffix.lower() in self.supported_extensions or
-            mime_type in self.supported_mime_types
+            file_path.suffix.lower() in self.supported_extensions
+            or mime_type in self.supported_mime_types
         )
 
     def extract_metadata(self, file_path: Path) -> FileMetadata:
@@ -161,7 +184,16 @@ class MediaExtractor(BaseExtractor):
 
     def _is_video_file(self, file_path: Path) -> bool:
         """Prüft, ob es sich um eine Videodatei handelt."""
-        video_extensions = ['.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm', '.mkv', '.m4v']
+        video_extensions = [
+            '.mp4',
+            '.avi',
+            '.mov',
+            '.wmv',
+            '.flv',
+            '.webm',
+            '.mkv',
+            '.m4v',
+        ]
         return file_path.suffix.lower() in video_extensions
 
     def _is_audio_file(self, file_path: Path) -> bool:
@@ -249,7 +281,6 @@ class MediaExtractor(BaseExtractor):
                 channels=audio.channels,
                 sample_rate=audio.frame_rate,
             )
-
 
         except Exception:
             # Fallback-Informationen

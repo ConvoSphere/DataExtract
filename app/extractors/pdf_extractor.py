@@ -9,6 +9,7 @@ from typing import Any
 
 try:
     import PyPDF2
+
     PDF_AVAILABLE = True
 except ImportError:
     PDF_AVAILABLE = False
@@ -23,7 +24,9 @@ class PDFExtractor(BaseExtractor):
     def __init__(self):
         super().__init__()
         if not PDF_AVAILABLE:
-            raise ImportError('PyPDF2 ist nicht installiert. Installieren Sie es mit: pip install PyPDF2')
+            raise ImportError(
+                'PyPDF2 ist nicht installiert. Installieren Sie es mit: pip install PyPDF2',
+            )
 
         self.supported_extensions = ['.pdf']
         self.supported_mime_types = ['application/pdf']
@@ -32,8 +35,8 @@ class PDFExtractor(BaseExtractor):
     def can_extract(self, file_path: Path, mime_type: str) -> bool:
         """Prüft, ob der Extraktor die PDF-Datei verarbeiten kann."""
         return (
-            file_path.suffix.lower() in self.supported_extensions or
-            mime_type in self.supported_mime_types
+            file_path.suffix.lower() in self.supported_extensions
+            or mime_type in self.supported_mime_types
         )
 
     def extract_metadata(self, file_path: Path) -> FileMetadata:
@@ -169,17 +172,22 @@ class PDFExtractor(BaseExtractor):
             line = line.strip()
             if line:
                 # Einfache Heuristik für Überschriften
-                if ((len(line) < 100 and  # Kurze Zeilen
-                    line.isupper()) or  # Alles Großbuchstaben
-                    (line[0].isupper() and line[-1] not in '.,!?') or  # Satz ohne Punkt
-                    re.match(r'^\d+\.\s', line)):  # Nummerierte Liste
-
-                    headings.append({
-                        'level': 1,  # Vereinfachte Hierarchie
-                        'text': line,
-                        'page': page_num + 1,
-                        'position': line_num,
-                    })
+                if (
+                    (
+                        len(line) < 100  # Kurze Zeilen
+                        and line.isupper()
+                    )  # Alles Großbuchstaben
+                    or (line[0].isupper() and line[-1] not in '.,!?')  # Satz ohne Punkt
+                    or re.match(r'^\d+\.\s', line)
+                ):  # Nummerierte Liste
+                    headings.append(
+                        {
+                            'level': 1,  # Vereinfachte Hierarchie
+                            'text': line,
+                            'page': page_num + 1,
+                            'position': line_num,
+                        },
+                    )
 
         return headings
 

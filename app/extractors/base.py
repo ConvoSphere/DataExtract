@@ -107,6 +107,7 @@ class BaseExtractor(ABC):
 
         if file_size > max_size:
             from app.core.exceptions import FileTooLargeException
+
             raise FileTooLargeException(file_size, max_size)
 
     def extract(
@@ -188,7 +189,10 @@ class BaseExtractor(ABC):
                     )
 
             # Optionale CPU-Last simulieren für Tests (linear mit Dateigröße)
-            if settings.simulate_processing and not settings.environment == 'production':
+            if (
+                settings.simulate_processing
+                and not settings.environment == 'production'
+            ):
                 file_size_kb = max(1, file_path.stat().st_size // 1024)
                 # rudimentäre Last: einfache Schleife proportional zur Größe (verstärkt)
                 dummy = 0

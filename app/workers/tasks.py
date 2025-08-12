@@ -6,14 +6,17 @@ import time
 from pathlib import Path
 from typing import Any
 
-from celery import Celery
+from celery import Celery, current_task
+
 from app.core.config import settings
-from celery import current_task
-
+from app.core.metrics import (
+    record_extraction_error,
+    record_extraction_start,
+    record_extraction_success,
+    record_job_status_change,
+)
 from app.core.queue import get_job_queue
-from app.core.metrics import record_extraction_start, record_extraction_success, record_extraction_error, record_job_status_change
 from app.extractors import get_extractor
-
 
 celery = Celery('file_extractor', broker=settings.redis_url, backend=settings.redis_url)
 
@@ -34,7 +37,7 @@ def extract_file_task(job_id: str) -> dict[str, Any]:
         Extraktionsergebnis
     """
     start_time = time.time()
-    
+
     try:
         # Job-Queue abrufen
         queue = get_job_queue()
@@ -49,9 +52,9 @@ def extract_file_task(job_id: str) -> dict[str, Any]:
 
         # Status auf "processing" setzen
         queue.redis_client.hset(f'job:{job_id}', 'status', 'processing')
-        
+
         # Job-Status-Änderung aufzeichnen
-        record_job_status_change(job_id, "processing")
+        record_job_status_change(job_id, 'processing')
 
         # Fortschritt melden
         current_task.update_state(
@@ -74,9 +77,7 @@ def extract_file_task(job_id: str) -> dict[str, Any]:
 
         # Metrics für Extraktionsstart
         record_extraction_start(
-            file_path=file_path,
-            file_size=file_size,
-            file_type=file_path.suffix.lower()
+            file_path=file_path, file_size=file_size, file_type=file_path.suffix.lower(),
         )
 
         # Fortschritt melden
@@ -109,8 +110,16 @@ def extract_file_task(job_id: str) -> dict[str, Any]:
         record_extraction_success(
             file_path=file_path,
             duration=duration,
-            text_length=(len(result.get('extracted_text', {}).get('content', '')) if isinstance(result, dict) else 0),
-            word_count=(result.get('extracted_text', {}).get('word_count', 0) if isinstance(result, dict) else 0)
+            text_length=(
+                len(result.get('extracted_text', {}).get('content', ''))
+                if isinstance(result, dict)
+                else 0
+            ),
+            word_count=(
+                result.get('extracted_text', {}).get('word_count', 0)
+                if isinstance(result, dict)
+                else 0
+            ),
         )
 
         # Fortschritt melden
@@ -130,13 +139,14 @@ def extract_file_task(job_id: str) -> dict[str, Any]:
         )
 
         # Job-Status-Änderung aufzeichnen
-        record_job_status_change(job_id, "completed", duration)
+        record_job_status_change(job_id, 'completed', duration)
 
         # Callback-URL aufrufen (falls angegeben)
         callback_url = job_data.get('callback_url')
         if callback_url:
             try:
                 import requests
+
                 requests.post(
                     callback_url,
                     json={
@@ -160,19 +170,19 @@ def extract_file_task(job_id: str) -> dict[str, Any]:
     except Exception as e:
         # Extraktionsdauer berechnen
         duration = time.time() - start_time
-        
+
         # Metrics für Extraktionsfehler
         if 'file_path' in locals():
             record_extraction_error(
                 file_path=file_path,
                 duration=duration,
                 error_type=type(e).__name__,
-                error_message=str(e)
+                error_message=str(e),
             )
-        
+
         # Job-Status-Änderung aufzeichnen
-        record_job_status_change(job_id, "failed", duration)
-        
+        record_job_status_change(job_id, 'failed', duration)
+
         # Fehler in Redis speichern
         try:
             queue = get_job_queue()
@@ -185,10 +195,13 @@ def extract_file_task(job_id: str) -> dict[str, Any]:
             )
 
             # Callback-URL für Fehler aufrufen
-            callback_url = job_data.get('callback_url') if 'job_data' in locals() else None
+            callback_url = (
+                job_data.get('callback_url') if 'job_data' in locals() else None
+            )
             if callback_url:
                 try:
                     import requests
+
                     requests.post(
                         callback_url,
                         json={

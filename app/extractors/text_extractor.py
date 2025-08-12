@@ -5,9 +5,10 @@ Extraktor für einfache Textdateien (TXT, CSV, JSON, XML).
 import csv
 import json
 import re
-from defusedxml import ElementTree as ET
 from datetime import datetime
 from pathlib import Path
+
+from defusedxml import ElementTree as ET
 
 from app.extractors.base import BaseExtractor
 from app.models.schemas import ExtractedText, FileMetadata, StructuredData
@@ -32,8 +33,8 @@ class TextExtractor(BaseExtractor):
     def can_extract(self, file_path: Path, mime_type: str) -> bool:
         """Prüft, ob der Extraktor die Datei verarbeiten kann."""
         return (
-            file_path.suffix.lower() in self.supported_extensions or
-            mime_type in self.supported_mime_types
+            file_path.suffix.lower() in self.supported_extensions
+            or mime_type in self.supported_mime_types
         )
 
     def extract_metadata(self, file_path: Path) -> FileMetadata:
@@ -57,7 +58,9 @@ class TextExtractor(BaseExtractor):
                     if isinstance(data, dict):
                         metadata.title = data.get('title') or data.get('name')
                         metadata.author = data.get('author') or data.get('creator')
-                        metadata.subject = data.get('subject') or data.get('description')
+                        metadata.subject = data.get('subject') or data.get(
+                            'description',
+                        )
             except Exception:
                 pass
 
@@ -179,11 +182,13 @@ class TextExtractor(BaseExtractor):
             headings = []
             for i, elem in enumerate(root.iter()):
                 if elem.tag.endswith(('h1', 'h2', 'h3', 'h4', 'h5', 'h6')):
-                    headings.append({
-                        'level': int(elem.tag[-1]),
-                        'text': elem.text or '',
-                        'position': i,
-                    })
+                    headings.append(
+                        {
+                            'level': int(elem.tag[-1]),
+                            'text': elem.text or '',
+                            'position': i,
+                        },
+                    )
 
             return StructuredData(
                 links=links,

@@ -22,6 +22,7 @@ class ExtractorFactory:
         # Docling-Extraktor als primärer Extraktor (falls verfügbar)
         try:
             from app.extractors.docling_extractor import DoclingExtractor
+
             self._register_extractor(DoclingExtractor(), priority=1)  # Höhere Priorität
         except ImportError:
             pass
@@ -29,30 +30,35 @@ class ExtractorFactory:
         # Fallback-Extraktoren
         try:
             from app.extractors.text_extractor import TextExtractor
+
             self._register_extractor(TextExtractor(), priority=10)
         except ImportError:
             pass
 
         try:
             from app.extractors.pdf_extractor import PDFExtractor
+
             self._register_extractor(PDFExtractor(), priority=10)
         except ImportError:
             pass
 
         try:
             from app.extractors.docx_extractor import DOCXExtractor
+
             self._register_extractor(DOCXExtractor(), priority=10)
         except ImportError:
             pass
 
         try:
             from app.extractors.image_extractor import ImageExtractor
+
             self._register_extractor(ImageExtractor(), priority=10)
         except ImportError:
             pass
 
         try:
             from app.extractors.media_extractor import MediaExtractor
+
             self._register_extractor(MediaExtractor(), priority=10)
         except ImportError:
             pass
@@ -86,13 +92,15 @@ class ExtractorFactory:
         """Gibt alle unterstützten Formate zurück."""
         formats = []
         for extractor, priority in self.extractors:
-            formats.append({
-                'extractor': extractor.__class__.__name__,
-                'priority': priority,
-                'supported_extensions': extractor.supported_extensions,
-                'supported_mime_types': extractor.supported_mime_types,
-                'max_file_size': extractor.max_file_size,
-            })
+            formats.append(
+                {
+                    'extractor': extractor.__class__.__name__,
+                    'priority': priority,
+                    'supported_extensions': extractor.supported_extensions,
+                    'supported_mime_types': extractor.supported_mime_types,
+                    'max_file_size': extractor.max_file_size,
+                },
+            )
         return formats
 
 

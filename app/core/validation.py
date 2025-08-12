@@ -3,13 +3,11 @@ Input Validation für die Universal File Extractor API.
 """
 
 import hashlib
-import magic
 import mimetypes
-import os
-from pathlib import Path
-from typing import List, Optional, Tuple
 import tempfile
+from pathlib import Path
 
+import magic
 from fastapi import HTTPException, UploadFile, status
 
 from app.core.config import settings
@@ -24,7 +22,7 @@ class FileValidator:
     def __init__(self):
         self.allowed_extensions = set(settings.allowed_extensions)
         self.max_file_size = settings.max_file_size
-        
+
         # Gefährliche MIME-Types
         self.dangerous_mime_types = {
             'application/x-executable',
@@ -32,23 +30,10 @@ class FileValidator:
             'application/x-msi',
             'application/x-msdos-program',
             'application/x-msdos-windows',
-            'application/x-msi',
             'application/x-ms-shortcut',
             'application/x-ms-wim',
-            'application/x-ms-wim',
-            'application/x-ms-wim',
-            'application/x-ms-wim',
-            'application/x-ms-wim',
-            'application/x-ms-wim',
-            'application/x-ms-wim',
-            'application/x-ms-wim',
-            'application/x-ms-wim',
-            'application/x-ms-wim',
-            'application/x-ms-wim',
-            'application/x-ms-wim',
-            'application/x-ms-wim',
         }
-        
+
         # Erlaubte MIME-Types
         self.allowed_mime_types = {
             # Dokumente
@@ -101,7 +86,9 @@ class FileValidator:
             'application/gzip',
         }
 
-    async def validate_upload_file(self, file: UploadFile) -> Tuple[bool, str, Optional[dict]]:
+    async def validate_upload_file(
+        self, file: UploadFile,
+    ) -> tuple[bool, str, dict | None]:
         """
         Validiert eine hochgeladene Datei umfassend.
 
@@ -114,22 +101,28 @@ class FileValidator:
         try:
             # 1. Basis-Validierung
             if not file.filename:
-                return False, "Kein Dateiname angegeben", None
+                return False, 'Kein Dateiname angegeben', None
 
             # 2. Dateigröße prüfen
             if file.size and file.size > self.max_file_size:
-                return False, f"Datei zu groß. Maximum: {self.max_file_size} bytes", None
+                return (
+                    False,
+                    f'Datei zu groß. Maximum: {self.max_file_size} bytes',
+                    None,
+                )
 
             # 3. Dateiendung prüfen
             file_path = Path(file.filename)
             extension = file_path.suffix.lower()
-            
+
             if extension not in self.allowed_extensions:
                 # Signalisiere 415 Unsupported Media Type via spezielle Nachricht
-                return False, f"UNSUPPORTED_EXTENSION:{extension}", None
+                return False, f'UNSUPPORTED_EXTENSION:{extension}', None
 
             # 4. Temporäre Datei erstellen für weitere Validierung
-            with tempfile.NamedTemporaryFile(delete=False, suffix=extension) as temp_file:
+            with tempfile.NamedTemporaryFile(
+                delete=False, suffix=extension,
+            ) as temp_file:
                 content = await file.read()
                 temp_file.write(content)
                 temp_file_path = Path(temp_file.name)
@@ -138,19 +131,23 @@ class FileValidator:
                 # 5. MIME-Type Validierung
                 mime_type = self._get_mime_type(temp_file_path)
                 if not self._is_mime_type_allowed(mime_type):
-                    return False, f"Nicht erlaubter MIME-Type: {mime_type}", None
+                    return False, f'Nicht erlaubter MIME-Type: {mime_type}', None
 
                 # 6. Datei-Signatur prüfen
                 if not self._validate_file_signature(temp_file_path, extension):
-                    return False, "Datei-Signatur stimmt nicht mit Dateiendung überein", None
+                    return (
+                        False,
+                        'Datei-Signatur stimmt nicht mit Dateiendung überein',
+                        None,
+                    )
 
                 # 7. Malware-Scan (Basic)
                 if not self._basic_malware_scan(temp_file_path):
-                    return False, "Datei wurde als verdächtig erkannt", None
+                    return False, 'Datei wurde als verdächtig erkannt', None
 
                 # 8. Datei-Integrität prüfen
                 file_hash = self._calculate_file_hash(temp_file_path)
-                
+
                 file_info = {
                     'filename': file.filename,
                     'size': len(content),
@@ -168,7 +165,7 @@ class FileValidator:
                     hash=file_hash,
                 )
 
-                return True, "", file_info
+                return True, '', file_info
 
             finally:
                 # Do not delete temp file here; routes are responsible for cleanup after processing
@@ -176,7 +173,7 @@ class FileValidator:
 
         except Exception as e:
             logger.error(f'File validation error: {e}')
-            return False, f"Validierungsfehler: {str(e)}", None
+            return False, f'Validierungsfehler: {e!s}', None
 
     def _get_mime_type(self, file_path: Path) -> str:
         """Ermittelt den MIME-Type einer Datei."""
@@ -194,11 +191,11 @@ class FileValidator:
         if mime_type in self.dangerous_mime_types:
             logger.warning(f'Dangerous MIME type detected: {mime_type}')
             return False
-        
+
         if mime_type not in self.allowed_mime_types:
             logger.warning(f'Unallowed MIME type: {mime_type}')
             return False
-        
+
         return True
 
     def _validate_file_signature(self, file_path: Path, extension: str) -> bool:
@@ -206,7 +203,7 @@ class FileValidator:
         try:
             with open(file_path, 'rb') as f:
                 header = f.read(16)  # Erste 16 Bytes lesen
-            
+
             # Datei-Signaturen (Magic Bytes)
             signatures = {
                 '.pdf': b'%PDF',
@@ -228,13 +225,13 @@ class FileValidator:
                 '.html': b'<!DOCTYPE' or b'<html' or b'<HTML',
                 '.txt': None,  # Keine spezifische Signatur
             }
-            
+
             expected_signature = signatures.get(extension)
             if expected_signature is None:
                 return True  # Keine Signatur definiert
-            
+
             return header.startswith(expected_signature)
-            
+
         except Exception as e:
             logger.warning(f'File signature validation error: {e}')
             return True  # Bei Fehlern erlauben
@@ -244,7 +241,7 @@ class FileValidator:
         try:
             with open(file_path, 'rb') as f:
                 content = f.read()
-            
+
             # Einfache Heuristiken für verdächtige Inhalte
             suspicious_patterns = [
                 b'MZ',  # Windows Executable
@@ -256,26 +253,34 @@ class FileValidator:
                 b'vbscript:',  # VBScript Protocol
                 b'data:text/html',  # Data URI
             ]
-            
+
             for pattern in suspicious_patterns:
                 if pattern in content:
                     logger.warning(f'Suspicious pattern detected: {pattern}')
                     return False
-            
+
             # Prüfe auf verdächtige Dateinamen
             suspicious_names = [
-                'virus', 'malware', 'trojan', 'backdoor', 'exploit',
-                'payload', 'shell', 'cmd', 'exec', 'run'
+                'virus',
+                'malware',
+                'trojan',
+                'backdoor',
+                'exploit',
+                'payload',
+                'shell',
+                'cmd',
+                'exec',
+                'run',
             ]
-            
+
             filename_lower = file_path.name.lower()
             for suspicious in suspicious_names:
                 if suspicious in filename_lower:
                     logger.warning(f'Suspicious filename detected: {filename_lower}')
                     return False
-            
+
             return True
-            
+
         except Exception as e:
             logger.warning(f'Malware scan error: {e}')
             return True  # Bei Fehlern erlauben
@@ -318,18 +323,18 @@ async def validate_file_upload(file: UploadFile) -> dict:
         HTTPException: Wenn Validierung fehlschlägt
     """
     is_valid, error_message, file_info = await file_validator.validate_upload_file(file)
-    
+
     if not is_valid:
         logger.warning(f'File validation failed: {error_message}')
         # Mappe spezifische Validierungsfehler auf passende Statuscodes
         if error_message.startswith('UNSUPPORTED_EXTENSION:'):
             raise HTTPException(
                 status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-                detail=f"Nicht unterstützte Dateiendung: {error_message.split(':',1)[1]}",
+                detail=f'Nicht unterstützte Dateiendung: {error_message.split(":", 1)[1]}',
             )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=error_message,
         )
-    
+
     return file_info
