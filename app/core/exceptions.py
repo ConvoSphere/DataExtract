@@ -89,7 +89,9 @@ def convert_to_http_exception(exc: FileExtractorException) -> HTTPException:
         'UNKNOWN_ERROR': status.HTTP_500_INTERNAL_SERVER_ERROR,
     }
 
-    status_code = error_mapping.get(exc.error_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+    status_code = error_mapping.get(
+        exc.error_code, status.HTTP_500_INTERNAL_SERVER_ERROR,
+    )
 
     return HTTPException(
         status_code=status_code,

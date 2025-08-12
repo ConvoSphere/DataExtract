@@ -8,13 +8,12 @@ from datetime import datetime
 from typing import Any
 
 import structlog
-from opentelemetry import trace, metrics
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry import metrics, trace
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.logging import LoggingInstrumentor
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.instrumentation.redis import RedisInstrumentor
+from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import Resource
@@ -38,7 +37,9 @@ def setup_structured_logging() -> None:
             structlog.processors.StackInfoRenderer(),
             structlog.processors.format_exc_info,
             structlog.processors.UnicodeDecoder(),
-            structlog.processors.JSONRenderer() if not settings.debug else structlog.dev.ConsoleRenderer(),
+            structlog.processors.JSONRenderer()
+            if not settings.debug
+            else structlog.dev.ConsoleRenderer(),
         ],
         context_class=dict,
         logger_factory=structlog.stdlib.LoggerFactory(),
@@ -58,13 +59,15 @@ def setup_opentelemetry() -> None:
     """Konfiguriert OpenTelemetry für Tracing und Metriken."""
 
     # Resource für Service-Informationen
-    resource = Resource.create({
-        'service.name': settings.app_name,
-        'service.version': settings.app_version,
-        'service.instance.id': f'{settings.app_name}-{datetime.now().isoformat()}',
-        'deployment.environment': settings.environment,
-        'service.namespace': 'file-extractor',
-    })
+    resource = Resource.create(
+        {
+            'service.name': settings.app_name,
+            'service.version': settings.app_version,
+            'service.instance.id': f'{settings.app_name}-{datetime.now().isoformat()}',
+            'deployment.environment': settings.environment,
+            'service.namespace': 'file-extractor',
+        },
+    )
 
     # Tracer Provider konfigurieren
     tracer_provider = TracerProvider(resource=resource)
@@ -127,56 +130,51 @@ def get_meter(name: str = None) -> metrics.Meter:
 # Custom Metrics definieren
 def setup_custom_metrics() -> dict:
     """Definiert Custom Metrics für den Microservice."""
-    meter = get_meter("file_extractor")
-    
+    meter = get_meter('file_extractor')
+
     metrics_dict = {
         # Counter für Extraktionen
         'extractions_total': meter.create_counter(
-            name="file_extractions_total",
-            description="Total number of file extractions",
-            unit="1"
+            name='file_extractions_total',
+            description='Total number of file extractions',
+            unit='1',
         ),
-        
         # Counter für Extraktionsfehler
         'extraction_errors_total': meter.create_counter(
-            name="extraction_errors_total", 
-            description="Total number of extraction errors",
-            unit="1"
+            name='extraction_errors_total',
+            description='Total number of extraction errors',
+            unit='1',
         ),
-        
         # Histogram für Extraktionsdauer
         'extraction_duration_seconds': meter.create_histogram(
-            name="extraction_duration_seconds",
-            description="Duration of file extractions",
-            unit="s"
+            name='extraction_duration_seconds',
+            description='Duration of file extractions',
+            unit='s',
         ),
-        
         # Gauge für aktive Jobs
         'active_jobs': meter.create_up_down_counter(
-            name="active_jobs",
-            description="Number of currently active extraction jobs",
-            unit="1"
+            name='active_jobs',
+            description='Number of currently active extraction jobs',
+            unit='1',
         ),
-        
         # Counter für unterstützte Dateitypen
         'file_type_extractions_total': meter.create_counter(
-            name="file_type_extractions_total",
-            description="Total extractions by file type",
-            unit="1"
+            name='file_type_extractions_total',
+            description='Total extractions by file type',
+            unit='1',
         ),
-        
         # Histogram für Dateigrößen
         'file_size_bytes': meter.create_histogram(
-            name="file_size_bytes",
-            description="Size of processed files",
-            unit="bytes"
+            name='file_size_bytes', description='Size of processed files', unit='bytes',
         ),
     }
-    
+
     return metrics_dict
 
 
-def log_request_info(logger: structlog.stdlib.BoundLogger, request_info: dict[str, Any]) -> None:
+def log_request_info(
+    logger: structlog.stdlib.BoundLogger, request_info: dict[str, Any],
+) -> None:
     """Loggt Request-Informationen strukturiert."""
     logger.info(
         'HTTP Request',
@@ -189,7 +187,9 @@ def log_request_info(logger: structlog.stdlib.BoundLogger, request_info: dict[st
     )
 
 
-def log_extraction_start(logger: structlog.stdlib.BoundLogger, file_info: dict[str, Any]) -> None:
+def log_extraction_start(
+    logger: structlog.stdlib.BoundLogger, file_info: dict[str, Any],
+) -> None:
     """Loggt den Start einer Extraktion."""
     logger.info(
         'Extraction started',
@@ -200,7 +200,9 @@ def log_extraction_start(logger: structlog.stdlib.BoundLogger, file_info: dict[s
     )
 
 
-def log_extraction_complete(logger: structlog.stdlib.BoundLogger, result_info: dict[str, Any]) -> None:
+def log_extraction_complete(
+    logger: structlog.stdlib.BoundLogger, result_info: dict[str, Any],
+) -> None:
     """Loggt den Abschluss einer Extraktion."""
     logger.info(
         'Extraction completed',
@@ -214,7 +216,9 @@ def log_extraction_complete(logger: structlog.stdlib.BoundLogger, result_info: d
     )
 
 
-def log_extraction_error(logger: structlog.stdlib.BoundLogger, error_info: dict[str, Any]) -> None:
+def log_extraction_error(
+    logger: structlog.stdlib.BoundLogger, error_info: dict[str, Any],
+) -> None:
     """Loggt Extraktionsfehler."""
     logger.error(
         'Extraction failed',
@@ -225,7 +229,9 @@ def log_extraction_error(logger: structlog.stdlib.BoundLogger, error_info: dict[
     )
 
 
-def log_job_status(logger: structlog.stdlib.BoundLogger, job_info: dict[str, Any]) -> None:
+def log_job_status(
+    logger: structlog.stdlib.BoundLogger, job_info: dict[str, Any],
+) -> None:
     """Loggt Job-Status-Änderungen."""
     logger.info(
         'Job status changed',

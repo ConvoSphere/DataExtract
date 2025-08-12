@@ -26,20 +26,56 @@ class Settings(BaseSettings):
     allowed_extensions: list[str] = Field(
         default=[
             # Dokumente
-            '.pdf', '.docx', '.doc', '.rtf', '.odt', '.txt',
+            '.pdf',
+            '.docx',
+            '.doc',
+            '.rtf',
+            '.odt',
+            '.txt',
             # Tabellen
-            '.xlsx', '.xls', '.ods', '.csv',
+            '.xlsx',
+            '.xls',
+            '.ods',
+            '.csv',
             # Präsentationen
-            '.pptx', '.ppt', '.odp',
+            '.pptx',
+            '.ppt',
+            '.odp',
             # Datenformate
-            '.json', '.xml', '.html', '.htm', '.yaml', '.yml',
+            '.json',
+            '.xml',
+            '.html',
+            '.htm',
+            '.yaml',
+            '.yml',
             # Bilder
-            '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.tif', '.webp', '.svg',
+            '.jpg',
+            '.jpeg',
+            '.png',
+            '.gif',
+            '.bmp',
+            '.tiff',
+            '.tif',
+            '.webp',
+            '.svg',
             # Medien
-            '.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm',
-            '.mp3', '.wav', '.flac', '.aac', '.ogg',
+            '.mp4',
+            '.avi',
+            '.mov',
+            '.wmv',
+            '.flv',
+            '.webm',
+            '.mp3',
+            '.wav',
+            '.flac',
+            '.aac',
+            '.ogg',
             # Archive
-            '.zip', '.rar', '.7z', '.tar', '.gz',
+            '.zip',
+            '.rar',
+            '.7z',
+            '.tar',
+            '.gz',
         ],
         description='Erlaubte Dateiendungen',
     )
@@ -188,7 +224,7 @@ class Settings(BaseSettings):
     # Test/Dev: Verarbeitungslast simulieren (für Performance-Relationen)
     simulate_processing: bool = Field(
         default=True,
-        description='Simuliert CPU-Last proportional zur Dateigröße (nicht in Produktion)'
+        description='Simuliert CPU-Last proportional zur Dateigröße (nicht in Produktion)',
     )
 
     # OpenTelemetry-Konfiguration
@@ -238,13 +274,27 @@ class Settings(BaseSettings):
     )
 
     # Additional fields for .env compatibility
-    secret_key: str = Field(default='your-secret-key-here', description='Secret key for the application')
-    allowed_hosts: str = Field(default='test,testserver,localhost,127.0.0.1', description='Allowed hosts')
-    celery_broker_url: str = Field(default='redis://redis:6379/0', description='Celery broker URL')
-    celery_result_backend: str = Field(default='redis://redis:6379/0', description='Celery result backend')
-    celery_task_serializer: str = Field(default='json', description='Celery task serializer')
-    celery_result_serializer: str = Field(default='json', description='Celery result serializer')
-    celery_accept_content: str = Field(default='json', description='Celery accept content')
+    secret_key: str = Field(
+        default='your-secret-key-here', description='Secret key for the application',
+    )
+    allowed_hosts: str = Field(
+        default='test,testserver,localhost,127.0.0.1', description='Allowed hosts',
+    )
+    celery_broker_url: str = Field(
+        default='redis://redis:6379/0', description='Celery broker URL',
+    )
+    celery_result_backend: str = Field(
+        default='redis://redis:6379/0', description='Celery result backend',
+    )
+    celery_task_serializer: str = Field(
+        default='json', description='Celery task serializer',
+    )
+    celery_result_serializer: str = Field(
+        default='json', description='Celery result serializer',
+    )
+    celery_accept_content: str = Field(
+        default='json', description='Celery accept content',
+    )
     celery_timezone: str = Field(default='UTC', description='Celery timezone')
     celery_enable_utc: str = Field(default='true', description='Celery enable UTC')
     jaeger_host: str = Field(default='jaeger', description='Jaeger host')
@@ -258,7 +308,9 @@ class Settings(BaseSettings):
     aws_region: str = Field(default='us-west-2', description='AWS region')
     smtp_port: str = Field(default='587', description='SMTP port')
     database_pool_size: str = Field(default='10', description='Database pool size')
-    database_max_overflow: str = Field(default='20', description='Database max overflow')
+    database_max_overflow: str = Field(
+        default='20', description='Database max overflow',
+    )
 
     class Config:
         env_file = '.env'

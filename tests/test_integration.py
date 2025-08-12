@@ -232,7 +232,9 @@ class TestAsyncExtractEndpoint:
 class TestAuthentication:
     """Tests für die Authentifizierung."""
 
-    def test_extract_without_auth_when_disabled(self, client: TestClient, sample_text_file: Path):
+    def test_extract_without_auth_when_disabled(
+        self, client: TestClient, sample_text_file: Path,
+    ):
         """Testet Extraktion ohne Auth wenn deaktiviert."""
         with open(sample_text_file, 'rb') as f:
             response = client.post(
@@ -247,7 +249,9 @@ class TestAuthentication:
         # Sollte erfolgreich sein, da Auth standardmäßig deaktiviert ist
         assert response.status_code == 200
 
-    def test_extract_with_valid_api_key(self, client: TestClient, sample_text_file: Path):
+    def test_extract_with_valid_api_key(
+        self, client: TestClient, sample_text_file: Path,
+    ):
         """Testet Extraktion mit gültigem API-Key."""
         with open(sample_text_file, 'rb') as f:
             response = client.post(
@@ -263,7 +267,9 @@ class TestAuthentication:
         # Sollte erfolgreich sein
         assert response.status_code == 200
 
-    def test_extract_with_invalid_api_key(self, client: TestClient, sample_text_file: Path):
+    def test_extract_with_invalid_api_key(
+        self, client: TestClient, sample_text_file: Path,
+    ):
         """Testet Extraktion mit ungültigem API-Key."""
         with open(sample_text_file, 'rb') as f:
             response = client.post(

@@ -76,12 +76,14 @@ async def detailed_health_check():
         format_details = []
 
         for format_info in formats:
-            format_details.append({
-                'extractor': format_info.get('class'),
-                'extensions': format_info.get('extensions', []),
-                'mime_types': format_info.get('mime_types', []),
-                'max_file_size': format_info.get('max_file_size'),
-            })
+            format_details.append(
+                {
+                    'extractor': format_info.get('class'),
+                    'extensions': format_info.get('extensions', []),
+                    'mime_types': format_info.get('mime_types', []),
+                    'max_file_size': format_info.get('max_file_size'),
+                },
+            )
 
         return {
             'basic_health': basic_health.dict(),

@@ -36,10 +36,14 @@ async def extract_file_async(
     file: UploadFile = File(..., description='Zu extrahierende Datei'),
     include_metadata: bool = Form(True, description='Metadaten extrahieren'),
     include_text: bool = Form(True, description='Text extrahieren'),
-    include_structure: bool = Form(False, description='Strukturierte Daten extrahieren'),
+    include_structure: bool = Form(
+        False, description='Strukturierte Daten extrahieren',
+    ),
     include_images: bool = Form(False, description='Bilder extrahieren'),
     include_media: bool = Form(False, description='Medien extrahieren'),
-    callback_url: str | None = Form(None, description='Callback-URL für Benachrichtigungen'),
+    callback_url: str | None = Form(
+        None, description='Callback-URL für Benachrichtigungen',
+    ),
     priority: str = Form('normal', description='Priorität (low, normal, high)'),
 ) -> AsyncExtractionResponse:
     """
@@ -74,7 +78,9 @@ async def extract_file_async(
             )
 
         # Temporäre Datei erstellen
-        with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.filename).suffix) as temp_file:
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=Path(file.filename).suffix,
+        ) as temp_file:
             # Datei-Inhalt schreiben
             content = await file.read()
             temp_file.write(content)
@@ -102,7 +108,6 @@ async def extract_file_async(
                 callback_url=callback_url,
                 priority=priority,
             )
-
 
         except Exception as e:
             # Temporäre Datei löschen

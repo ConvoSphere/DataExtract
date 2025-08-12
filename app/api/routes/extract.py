@@ -2,19 +2,27 @@
 API-Routen für die Datei-Extraktion.
 """
 
-import tempfile
+import time
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from app.core.auth import check_rate_limit, get_current_user
-from app.core.config import settings
 from app.core.exceptions import FileExtractorException, convert_to_http_exception
-from app.core.validation import validate_file_upload
-import time
 from app.core.logging import get_logger
-from app.core.metrics import record_extraction_start, record_extraction_success, record_extraction_error
-from app.extractors import get_extractor, is_format_supported, get_supported_formats as list_supported_formats
+from app.core.metrics import (
+    record_extraction_error,
+    record_extraction_start,
+    record_extraction_success,
+)
+from app.core.validation import validate_file_upload
+from app.extractors import (
+    get_extractor,
+    is_format_supported,
+)
+from app.extractors import (
+    get_supported_formats as list_supported_formats,
+)
 from app.models.schemas import ErrorResponse, ExtractionResult
 
 router = APIRouter()
@@ -38,8 +46,12 @@ async def extract_file(
     file: UploadFile = File(..., description='Zu extrahierende Datei'),
     include_metadata: bool = Form(True, description='Metadaten extrahieren'),
     include_text: bool = Form(True, description='Text extrahieren'),
-    include_structure: bool = Form(False, description='Strukturierte Daten extrahieren'),
-    language: str | None = Form(None, description='Sprache für die Extraktion (ISO 639-1)'),
+    include_structure: bool = Form(
+        False, description='Strukturierte Daten extrahieren',
+    ),
+    language: str | None = Form(
+        None, description='Sprache für die Extraktion (ISO 639-1)',
+    ),
     user: dict = Depends(get_current_user),
     _: dict = Depends(check_rate_limit),
     file_info: dict = Depends(validate_file_upload),
@@ -68,7 +80,7 @@ async def extract_file(
     """
     try:
         start_time = time.time()
-        
+
         # Logging für Extraktionsanfrage
         logger.info(
             'Extraction request received',
@@ -96,7 +108,7 @@ async def extract_file(
             record_extraction_start(
                 file_path=temp_file_path,
                 file_size=file_info['size'],
-                file_type=temp_file_path.suffix.lower()
+                file_type=temp_file_path.suffix.lower(),
             )
 
             # Passenden Extraktor finden
@@ -124,8 +136,13 @@ async def extract_file(
             record_extraction_success(
                 file_path=temp_file_path,
                 duration=duration,
-                text_length=len(result.extracted_text.content) if result.extracted_text and result.extracted_text.content else 0,
-                word_count=result.extracted_text.word_count if result.extracted_text and result.extracted_text.word_count is not None else 0
+                text_length=len(result.extracted_text.content)
+                if result.extracted_text and result.extracted_text.content
+                else 0,
+                word_count=result.extracted_text.word_count
+                if result.extracted_text
+                and result.extracted_text.word_count is not None
+                else 0,
             )
 
             # Logging für erfolgreiche Extraktion
@@ -133,13 +150,17 @@ async def extract_file(
                 'Extraction completed successfully',
                 filename=file.filename,
                 file_size=file_info['size'],
-                text_length=len(result.extracted_text.content) if result.extracted_text and result.extracted_text.content else 0,
-                word_count=result.extracted_text.word_count if result.extracted_text and result.extracted_text.word_count is not None else 0,
+                text_length=len(result.extracted_text.content)
+                if result.extracted_text and result.extracted_text.content
+                else 0,
+                word_count=result.extracted_text.word_count
+                if result.extracted_text
+                and result.extracted_text.word_count is not None
+                else 0,
                 duration=duration,
             )
 
             return result
-
 
         finally:
             # Temporäre Datei löschen
@@ -154,20 +175,20 @@ async def extract_file(
         # Metrics für Extraktionsfehler
         duration = time.time() - start_time
         record_extraction_error(
-            file_path=Path(file.filename) if file.filename else Path("unknown"),
+            file_path=Path(file.filename) if file.filename else Path('unknown'),
             duration=duration,
-            error_type="FileExtractorException",
-            error_message=str(e)
+            error_type='FileExtractorException',
+            error_message=str(e),
         )
         raise convert_to_http_exception(e)
     except Exception as e:
         # Metrics für Extraktionsfehler
         duration = time.time() - start_time
         record_extraction_error(
-            file_path=Path(file.filename) if file.filename else Path("unknown"),
+            file_path=Path(file.filename) if file.filename else Path('unknown'),
             duration=duration,
-            error_type="Exception",
-            error_message=str(e)
+            error_type='Exception',
+            error_message=str(e),
         )
         raise HTTPException(
             status_code=500,
@@ -195,13 +216,17 @@ async def get_supported_formats():
         for format_info in formats:
             for extension in format_info.get('supported_extensions', []):
                 mime_types = format_info.get('supported_mime_types', [])
-                supported_formats.append({
-                    'extension': extension,
-                    'mime_type': mime_types[0] if mime_types else 'application/octet-stream',
-                    'description': f"Unterstützt durch {format_info.get('extractor')}",
-                    'features': ['text_extraction', 'metadata_extraction'],
-                    'max_size': format_info.get('max_file_size'),
-                })
+                supported_formats.append(
+                    {
+                        'extension': extension,
+                        'mime_type': mime_types[0]
+                        if mime_types
+                        else 'application/octet-stream',
+                        'description': f'Unterstützt durch {format_info.get("extractor")}',
+                        'features': ['text_extraction', 'metadata_extraction'],
+                        'max_size': format_info.get('max_file_size'),
+                    },
+                )
 
         return {
             'formats': supported_formats,
@@ -249,17 +274,21 @@ async def extract_batch(
                 include_text=include_text,
                 include_structure=include_structure,
             )
-            results.append({
-                'filename': file.filename,
-                'success': True,
-                'result': result,
-            })
+            results.append(
+                {
+                    'filename': file.filename,
+                    'success': True,
+                    'result': result,
+                },
+            )
         except Exception as e:
-            results.append({
-                'filename': file.filename,
-                'success': False,
-                'error': str(e),
-            })
+            results.append(
+                {
+                    'filename': file.filename,
+                    'success': False,
+                    'error': str(e),
+                },
+            )
 
     return {
         'batch_results': results,

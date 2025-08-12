@@ -14,6 +14,7 @@ try:
     from docx.oxml.text.paragraph import CT_P
     from docx.table import Table, _Cell
     from docx.text.paragraph import Paragraph
+
     DOCX_AVAILABLE = True
 except ImportError:
     DOCX_AVAILABLE = False
@@ -28,7 +29,9 @@ class DOCXExtractor(BaseExtractor):
     def __init__(self):
         super().__init__()
         if not DOCX_AVAILABLE:
-            raise ImportError('python-docx ist nicht installiert. Installieren Sie es mit: pip install python-docx')
+            raise ImportError(
+                'python-docx ist nicht installiert. Installieren Sie es mit: pip install python-docx',
+            )
 
         self.supported_extensions = ['.docx', '.doc']
         self.supported_mime_types = [
@@ -40,8 +43,8 @@ class DOCXExtractor(BaseExtractor):
     def can_extract(self, file_path: Path, mime_type: str) -> bool:
         """Prüft, ob der Extraktor die DOCX-Datei verarbeiten kann."""
         return (
-            file_path.suffix.lower() in self.supported_extensions or
-            mime_type in self.supported_mime_types
+            file_path.suffix.lower() in self.supported_extensions
+            or mime_type in self.supported_mime_types
         )
 
     def extract_metadata(self, file_path: Path) -> FileMetadata:
@@ -134,11 +137,13 @@ class DOCXExtractor(BaseExtractor):
                     if text:
                         # Überschriften erkennen
                         if self._is_heading(paragraph):
-                            headings.append({
-                                'level': self._get_heading_level(paragraph),
-                                'text': text,
-                                'position': len(headings),
-                            })
+                            headings.append(
+                                {
+                                    'level': self._get_heading_level(paragraph),
+                                    'text': text,
+                                    'position': len(headings),
+                                },
+                            )
 
                         # Listen erkennen
                         if self._is_list_item(text):

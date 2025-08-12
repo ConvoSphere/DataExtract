@@ -8,6 +8,7 @@ from typing import Any
 
 try:
     import docling
+
     # Check if Pipeline is available
     try:
         from docling import Document, Pipeline
@@ -16,13 +17,15 @@ try:
         class Pipeline:
             def __init__(self):
                 self.enrichments = []
+
             def add_enrichment(self, enrichment):
                 self.enrichments.append(enrichment)
+
             def process(self, doc):
                 return doc
-        
+
         from docling import Document
-    
+
     # Try to import enrichments, but don't fail if they're not available
     try:
         from docling.enrichments import (
@@ -42,20 +45,21 @@ try:
         class MockEnrichment:
             def __init__(self, name):
                 self.name = name
+
             def enrich(self, doc):
                 return doc
-        
-        EntityEnrichment = lambda: MockEnrichment("EntityEnrichment")
-        ImageEnrichment = lambda: MockEnrichment("ImageEnrichment")
-        LanguageEnrichment = lambda: MockEnrichment("LanguageEnrichment")
-        LinkEnrichment = lambda: MockEnrichment("LinkEnrichment")
-        MetadataEnrichment = lambda: MockEnrichment("MetadataEnrichment")
-        SentimentEnrichment = lambda: MockEnrichment("SentimentEnrichment")
-        StructureEnrichment = lambda: MockEnrichment("StructureEnrichment")
-        SummaryEnrichment = lambda: MockEnrichment("SummaryEnrichment")
-        TableEnrichment = lambda: MockEnrichment("TableEnrichment")
-        TextEnrichment = lambda: MockEnrichment("TextEnrichment")
-    
+
+        EntityEnrichment = lambda: MockEnrichment('EntityEnrichment')
+        ImageEnrichment = lambda: MockEnrichment('ImageEnrichment')
+        LanguageEnrichment = lambda: MockEnrichment('LanguageEnrichment')
+        LinkEnrichment = lambda: MockEnrichment('LinkEnrichment')
+        MetadataEnrichment = lambda: MockEnrichment('MetadataEnrichment')
+        SentimentEnrichment = lambda: MockEnrichment('SentimentEnrichment')
+        StructureEnrichment = lambda: MockEnrichment('StructureEnrichment')
+        SummaryEnrichment = lambda: MockEnrichment('SummaryEnrichment')
+        TableEnrichment = lambda: MockEnrichment('TableEnrichment')
+        TextEnrichment = lambda: MockEnrichment('TextEnrichment')
+
     DOCLING_AVAILABLE = True
 except ImportError:
     DOCLING_AVAILABLE = False
@@ -83,15 +87,37 @@ class DoclingExtractor(BaseExtractor):
         # Unterstützte Formate (docling kann viele Formate verarbeiten)
         self.supported_extensions = [
             # Dokumente
-            '.pdf', '.docx', '.doc', '.rtf', '.odt', '.txt',
+            '.pdf',
+            '.docx',
+            '.doc',
+            '.rtf',
+            '.odt',
+            '.txt',
             # Tabellen
-            '.xlsx', '.xls', '.ods', '.csv',
+            '.xlsx',
+            '.xls',
+            '.ods',
+            '.csv',
             # Präsentationen
-            '.pptx', '.ppt', '.odp',
+            '.pptx',
+            '.ppt',
+            '.odp',
             # Datenformate
-            '.json', '.xml', '.html', '.htm', '.yaml', '.yml',
+            '.json',
+            '.xml',
+            '.html',
+            '.htm',
+            '.yaml',
+            '.yml',
             # Bilder (mit OCR)
-            '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.tif', '.webp',
+            '.jpg',
+            '.jpeg',
+            '.png',
+            '.gif',
+            '.bmp',
+            '.tiff',
+            '.tif',
+            '.webp',
         ]
         self.supported_mime_types = [
             # Dokumente
@@ -116,8 +142,12 @@ class DoclingExtractor(BaseExtractor):
             'text/html',
             'text/yaml',
             # Bilder
-            'image/jpeg', 'image/png', 'image/gif', 'image/bmp',
-            'image/tiff', 'image/webp',
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'image/bmp',
+            'image/tiff',
+            'image/webp',
         ]
         self.max_file_size = settings.max_file_size
 

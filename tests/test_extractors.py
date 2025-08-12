@@ -16,6 +16,7 @@ def test_base_extractor_abstract_methods():
 
 def test_base_extractor_interface():
     """Testet das Interface des BaseExtractor."""
+
     # Mock-Extraktor erstellen, der BaseExtractor implementiert
     class MockExtractor(BaseExtractor):
         def can_extract(self, file_path: Path, mime_type: str) -> bool:
@@ -41,6 +42,7 @@ def test_base_extractor_interface():
 
 def test_mock_extractor_can_extract():
     """Testet die can_extract Methode eines Mock-Extraktors."""
+
     class MockExtractor(BaseExtractor):
         def can_extract(self, file_path: Path, mime_type: str) -> bool:
             return file_path.suffix == '.mock'

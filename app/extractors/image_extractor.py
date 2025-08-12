@@ -12,6 +12,7 @@ from PIL import Image
 try:
     import easyocr
     import pytesseract
+
     OCR_AVAILABLE = True
 except ImportError:
     OCR_AVAILABLE = False
@@ -35,20 +36,32 @@ class ImageExtractor(BaseExtractor):
             pass
 
         self.supported_extensions = [
-            '.jpg', '.jpeg', '.png', '.gif', '.bmp',
-            '.tiff', '.tif', '.webp', '.svg',
+            '.jpg',
+            '.jpeg',
+            '.png',
+            '.gif',
+            '.bmp',
+            '.tiff',
+            '.tif',
+            '.webp',
+            '.svg',
         ]
         self.supported_mime_types = [
-            'image/jpeg', 'image/png', 'image/gif', 'image/bmp',
-            'image/tiff', 'image/webp', 'image/svg+xml',
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'image/bmp',
+            'image/tiff',
+            'image/webp',
+            'image/svg+xml',
         ]
         self.max_file_size = settings.image_max_size
 
     def can_extract(self, file_path: Path, mime_type: str) -> bool:
         """Prüft, ob der Extraktor die Bilddatei verarbeiten kann."""
         return (
-            file_path.suffix.lower() in self.supported_extensions or
-            mime_type in self.supported_mime_types
+            file_path.suffix.lower() in self.supported_extensions
+            or mime_type in self.supported_mime_types
         )
 
     def extract_metadata(self, file_path: Path) -> FileMetadata:
@@ -86,9 +99,9 @@ class ImageExtractor(BaseExtractor):
                     if exif:
                         # EXIF-Tags für Metadaten
                         exif_tags = {
-                            270: 'title',      # ImageDescription
-                            315: 'author',     # Artist
-                            33432: 'author',   # Copyright
+                            270: 'title',  # ImageDescription
+                            315: 'author',  # Artist
+                            33432: 'author',  # Copyright
                         }
 
                         for tag_id, field_name in exif_tags.items():
@@ -131,12 +144,14 @@ class ImageExtractor(BaseExtractor):
                         text_parts = []
                         total_confidence = 0.0
 
-                        for (_bbox, text, confidence) in results:
+                        for _bbox, text, confidence in results:
                             text_parts.append(text)
                             total_confidence += confidence
 
                         content = ' '.join(text_parts)
-                        ocr_confidence = total_confidence / len(results) if results else 0.0
+                        ocr_confidence = (
+                            total_confidence / len(results) if results else 0.0
+                        )
 
                 except Exception:
                     # Fallback zu Tesseract
@@ -209,9 +224,8 @@ class ImageExtractor(BaseExtractor):
         denoised = cv2.medianBlur(gray, 3)
 
         # Kontrastverbesserung
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
         return clahe.apply(denoised)
-
 
     def _extract_image_info(self, img: Image.Image, file_path: Path) -> ExtractedImage:
         """Extrahiert detaillierte Bild-Informationen."""
@@ -237,7 +251,7 @@ class ImageExtractor(BaseExtractor):
                     text_parts = []
                     total_confidence = 0.0
 
-                    for (_bbox, text, confidence) in results:
+                    for _bbox, text, confidence in results:
                         text_parts.append(text)
                         total_confidence += confidence
 
@@ -255,7 +269,9 @@ class ImageExtractor(BaseExtractor):
 
         return image_info
 
-    def _extract_color_palette(self, img: Image.Image, num_colors: int = 5) -> list[str]:
+    def _extract_color_palette(
+        self, img: Image.Image, num_colors: int = 5,
+    ) -> list[str]:
         """Extrahiert die dominanten Farben aus einem Bild."""
         try:
             # Bild auf kleinere Größe reduzieren für schnellere Verarbeitung
@@ -269,7 +285,7 @@ class ImageExtractor(BaseExtractor):
             for color in img_quantized.getcolors():
                 if color:
                     # RGB-Werte in Hex-Format konvertieren
-                    rgb = img_quantized.getpalette()[color[1]*3:color[1]*3+3]
+                    rgb = img_quantized.getpalette()[color[1] * 3 : color[1] * 3 + 3]
                     hex_color = f'#{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}'
                     colors.append(hex_color)
 

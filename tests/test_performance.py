@@ -92,7 +92,9 @@ class TestResponseTime:
         finally:
             temp_file.unlink(missing_ok=True)
 
-    def test_large_file_extraction_time(self, client: TestClient, large_text_file: Path):
+    def test_large_file_extraction_time(
+        self, client: TestClient, large_text_file: Path,
+    ):
         """Testet Extraktionszeit für große Dateien."""
         start_time = time.time()
 
@@ -156,7 +158,9 @@ class TestConcurrency:
 
         def make_extraction_request():
             # Kleine Test-Datei für jeden Request
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+            with tempfile.NamedTemporaryFile(
+                mode='w', suffix='.txt', delete=False,
+            ) as f:
                 f.write(f'Test-Datei für Request {time.time()}')
                 temp_file = Path(f.name)
 
@@ -296,7 +300,9 @@ class TestThroughput:
 
         for i in range(num_extractions):
             # Kleine Test-Datei für jede Extraktion
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+            with tempfile.NamedTemporaryFile(
+                mode='w', suffix='.txt', delete=False,
+            ) as f:
                 f.write(f'Test-Datei {i}')
                 temp_file = Path(f.name)
 
@@ -334,7 +340,9 @@ class TestScalability:
 
         for size in file_sizes:
             # Datei mit entsprechender Größe erstellen
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+            with tempfile.NamedTemporaryFile(
+                mode='w', suffix='.txt', delete=False,
+            ) as f:
                 content = 'x' * size
                 f.write(content)
                 temp_file = Path(f.name)
