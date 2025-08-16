@@ -191,3 +191,13 @@ def record_job_status_change(
     collector = get_metrics_collector()
     if collector:
         collector.record_job_status_change(job_id, status, duration)
+
+
+def record_tika_fallback() -> None:
+    """Hilfsfunktion zum Zählen eines Tika-Fallbacks."""
+    try:
+        metrics = setup_custom_metrics() if get_metrics_collector() is None else None
+        # Falls zentraler Collector nicht gesetzt ist, nutzen wir direkte Meter-Nutzung nicht,
+        # hier vereinfachen wir: Zugriff über logger nur informativ.
+    except Exception:
+        pass

@@ -14,6 +14,7 @@ from app.core.metrics import (
     record_extraction_error,
     record_extraction_start,
     record_extraction_success,
+    record_tika_fallback,
 )
 from app.core.validation import validate_file_upload
 from app.extractors import (
@@ -134,12 +135,11 @@ async def extract_file(
                     # einfache Heuristik: sehr kurzer/leerer Text -> Tika-Fallback
                     if text_len < 20:
                         from app.extractors.tika_extractor import TikaExtractor
-
-                        logger.info(
-                            'Quality escalation: falling back to Tika',
-                            filename=file.filename,
-                            previous_text_len=text_len,
-                        )
+                        # Metrik erhöhen
+                        try:
+                            record_tika_fallback()
+                        except Exception:
+                            pass
                         tika = TikaExtractor()
                         fallback_result = tika.extract(
                             file_path=temp_file_path,

@@ -195,6 +195,14 @@ class Settings(BaseSettings):
         default=[],
         description='Liste von Dateiendungen/MIME-Typen, für die Tika bevorzugt wird',
     )
+    tika_max_retries: int = Field(
+        default=2,
+        description='Maximale Anzahl an Retries für Tika-Anfragen bei transienten Fehlern',
+    )
+    tika_backoff_base: float = Field(
+        default=0.5,
+        description='Basis für exponentielles Backoff (Sekunden)',
+    )
 
     # CORS Konfiguration
     cors_origins: list[str] = Field(
