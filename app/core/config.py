@@ -170,6 +170,40 @@ class Settings(BaseSettings):
         description='Docling-Cache TTL in Sekunden',
     )
 
+    # Tika-Konfiguration
+    enable_tika: bool = Field(
+        default=True,
+        description='Apache Tika als Fallback aktivieren',
+    )
+    tika_server_url: str = Field(
+        default='http://tika:9998',
+        description='Apache Tika Server URL',
+    )
+    tika_timeout: int = Field(
+        default=30,
+        description='Timeout für Tika-Requests in Sekunden',
+    )
+    tika_use_ocr: bool = Field(
+        default=False,
+        description='OCR über Tika aktivieren (erfordert -full Image)',
+    )
+    tika_ocr_langs: str = Field(
+        default='deu+eng',
+        description='OCR-Sprachen für Tika (z. B. deu+eng)',
+    )
+    tika_prefer_for_formats: list[str] = Field(
+        default=[],
+        description='Liste von Dateiendungen/MIME-Typen, für die Tika bevorzugt wird',
+    )
+    tika_max_retries: int = Field(
+        default=2,
+        description='Maximale Anzahl an Retries für Tika-Anfragen bei transienten Fehlern',
+    )
+    tika_backoff_base: float = Field(
+        default=0.5,
+        description='Basis für exponentielles Backoff (Sekunden)',
+    )
+
     # CORS Konfiguration
     cors_origins: list[str] = Field(
         default=['http://localhost:3000', 'http://localhost:8080'],

@@ -31,35 +31,45 @@ class ExtractorFactory:
         try:
             from app.extractors.text_extractor import TextExtractor
 
-            self._register_extractor(TextExtractor(), priority=10)
+            self._register_extractor(TextExtractor(), priority=5)
         except ImportError:
             pass
 
         try:
             from app.extractors.pdf_extractor import PDFExtractor
 
-            self._register_extractor(PDFExtractor(), priority=10)
+            self._register_extractor(PDFExtractor(), priority=6)
         except ImportError:
             pass
 
         try:
             from app.extractors.docx_extractor import DOCXExtractor
 
-            self._register_extractor(DOCXExtractor(), priority=10)
+            self._register_extractor(DOCXExtractor(), priority=7)
         except ImportError:
             pass
 
         try:
             from app.extractors.image_extractor import ImageExtractor
 
-            self._register_extractor(ImageExtractor(), priority=10)
+            self._register_extractor(ImageExtractor(), priority=8)
         except ImportError:
             pass
 
         try:
             from app.extractors.media_extractor import MediaExtractor
 
-            self._register_extractor(MediaExtractor(), priority=10)
+            self._register_extractor(MediaExtractor(), priority=9)
+        except ImportError:
+            pass
+
+        # Tika-Extraktor als letzter Fallback (optional)
+        try:
+            from app.core.config import settings
+            if settings.enable_tika:
+                from app.extractors.tika_extractor import TikaExtractor
+
+                self._register_extractor(TikaExtractor(), priority=20)
         except ImportError:
             pass
 

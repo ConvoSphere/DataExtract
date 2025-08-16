@@ -14,6 +14,7 @@ from app.core.metrics import (
     record_extraction_error,
     record_extraction_start,
     record_extraction_success,
+    record_tika_fallback,
 )
 from app.core.validation import validate_file_upload
 from app.extractors import (
@@ -121,6 +122,45 @@ async def extract_file(
                 include_text=include_text,
                 include_structure=include_structure,
             )
+
+            # Optionale Qualitäts-Eskalation zu Tika: Wenn Ergebnis schwach ist
+            try:
+                from app.core.config import settings as _settings
+                if _settings.enable_tika and include_text:
+                    text_len = (
+                        len(result.extracted_text.content)
+                        if result.extracted_text and result.extracted_text.content
+                        else 0
+                    )
+                    # einfache Heuristik: sehr kurzer/leerer Text -> Tika-Fallback
+                    if text_len < 20:
+                        from app.extractors.tika_extractor import TikaExtractor
+                        # Metrik erhöhen
+                        try:
+                            record_tika_fallback()
+                        except Exception:
+                            pass
+                        tika = TikaExtractor()
+                        fallback_result = tika.extract(
+                            file_path=temp_file_path,
+                            include_metadata=include_metadata,
+                            include_text=True,
+                            include_structure=False,
+                        )
+                        # Wenn Tika mehr Inhalt liefert, ersetze Text/Metadaten
+                        fallback_len = (
+                            len(fallback_result.extracted_text.content)
+                            if fallback_result.extracted_text
+                            and fallback_result.extracted_text.content
+                            else 0
+                        )
+                        if fallback_len > text_len:
+                            result.extracted_text = fallback_result.extracted_text
+                            if include_metadata and fallback_result.file_metadata:
+                                result.file_metadata = fallback_result.file_metadata
+            except Exception:
+                # Eskalation darf nie die Haupt-Extraktion brechen
+                pass
 
             # Originaler Dateiname in den Metadaten beibehalten
             try:
