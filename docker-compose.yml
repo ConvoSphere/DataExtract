@@ -16,6 +16,21 @@ services:
       timeout: 10s
       retries: 3
 
+  # Apache Tika Server (Fallback-Extraktion)
+  tika:
+    image: apache/tika:2.9.2-full
+    container_name: file_extractor_tika
+    ports:
+      - "9998:9998"
+    environment:
+      - JAVA_TOOL_OPTIONS=-Xms512m -Xmx1g
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9998/tika"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
   # API-Server
   api:
     build:
@@ -32,11 +47,18 @@ services:
       - ENABLE_ASYNC_PROCESSING=true
       - MAX_CONCURRENT_EXTRACTIONS=10
       - WORKER_PROCESSES=4
+      - ENABLE_TIKA=true
+      - TIKA_SERVER_URL=http://tika:9998
+      - TIKA_TIMEOUT=30
+      - TIKA_USE_OCR=false
+      - TIKA_OCR_LANGS=deu+eng
     volumes:
       - temp_files:/tmp/file_extractor
     depends_on:
       redis:
         condition: service_healthy
+      tika:
+        condition: service_started
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health/live"]
@@ -58,11 +80,18 @@ services:
       - DEBUG=false
       - MAX_FILE_SIZE=157286400  # 150MB
       - ENABLE_ASYNC_PROCESSING=true
+      - ENABLE_TIKA=true
+      - TIKA_SERVER_URL=http://tika:9998
+      - TIKA_TIMEOUT=30
+      - TIKA_USE_OCR=false
+      - TIKA_OCR_LANGS=deu+eng
     volumes:
       - temp_files:/tmp/file_extractor
     depends_on:
       redis:
         condition: service_healthy
+      tika:
+        condition: service_started
     restart: unless-stopped
     deploy:
       replicas: 2  # Mehrere Worker-Instanzen für Skalierung
