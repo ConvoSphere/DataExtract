@@ -5,11 +5,13 @@ API-Routen für asynchrone Datei-Extraktion.
 import tempfile
 from pathlib import Path
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from app.core.config import settings
+from app.core.auth import check_rate_limit, get_current_user
 from app.core.exceptions import FileExtractorException, convert_to_http_exception
 from app.core.queue import get_job_queue
+from app.core.validation import validate_file_upload
 from app.extractors import is_format_supported
 from app.models.schemas import (
     AsyncExtractionResponse,
@@ -45,6 +47,9 @@ async def extract_file_async(
         None, description='Callback-URL für Benachrichtigungen',
     ),
     priority: str = Form('normal', description='Priorität (low, normal, high)'),
+    user: dict = Depends(get_current_user),
+    _: dict = Depends(check_rate_limit),
+    file_info: dict = Depends(validate_file_upload),
 ) -> AsyncExtractionResponse:
     """
     Startet eine asynchrone Extraktion einer Datei.
@@ -63,31 +68,11 @@ async def extract_file_async(
         AsyncExtractionResponse mit Job-ID und Status
     """
     try:
-        # Datei validieren
-        if not file.filename:
-            raise HTTPException(
-                status_code=400,
-                detail='Kein Dateiname angegeben',
-            )
-
-        # Dateigröße prüfen
-        if file.size and file.size > settings.max_file_size:
-            raise HTTPException(
-                status_code=413,
-                detail=f'Datei zu groß. Maximum: {settings.max_file_size} bytes',
-            )
-
-        # Temporäre Datei erstellen
-        with tempfile.NamedTemporaryFile(
-            delete=False, suffix=Path(file.filename).suffix,
-        ) as temp_file:
-            # Datei-Inhalt schreiben
-            content = await file.read()
-            temp_file.write(content)
-            temp_file_path = Path(temp_file.name)
+        # Temporäre Datei aus Validierung verwenden
+        temp_file_path = Path(file_info['temp_path'])
 
         try:
-            # Datei-Format prüfen
+            # Datei-Format prüfen (Extractor-Fähigkeit)
             if not is_format_supported(temp_file_path):
                 raise HTTPException(
                     status_code=415,
@@ -110,7 +95,7 @@ async def extract_file_async(
             )
 
         except Exception as e:
-            # Temporäre Datei löschen
+            # Temporäre Datei bei Fehler löschen
             try:
                 temp_file_path.unlink()
             except Exception:

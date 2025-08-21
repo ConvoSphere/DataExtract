@@ -240,6 +240,19 @@ class JobQueue:
             elif celery_status == 'PROGRESS':
                 progress = async_result.result.get('progress', 0.0)
 
+        # Fallback: Resultat aus Redis lesen, wenn leer
+        if result is None:
+            try:
+                import json
+                stored_result = job_data.get('result')
+                if stored_result:
+                    result = json.loads(stored_result)
+                    if celery_status == 'PENDING':
+                        celery_status = 'SUCCESS'
+                        progress = 100.0
+            except Exception:
+                pass
+
         # Status-Mapping
         status_mapping = {
             'PENDING': 'queued',

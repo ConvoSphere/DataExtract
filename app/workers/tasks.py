@@ -103,23 +103,29 @@ def extract_file_task(job_id: str) -> dict[str, Any]:
             include_structure=include_structure,
         )
 
+        # Ergebnis in Dict konvertieren (für Metriken und Speicherung)
+        result_dict = result if isinstance(result, dict) else result.dict()
+
         # Extraktionsdauer berechnen
         duration = time.time() - start_time
 
-        # Metrics für erfolgreiche Extraktion
+        # Metrics für erfolgreiche Extraktion (aus result_dict)
+        text_content = (
+            result_dict.get('extracted_text', {}).get('content', '')
+            if isinstance(result_dict.get('extracted_text'), dict)
+            else ''
+        )
+        word_count_val = (
+            result_dict.get('extracted_text', {}).get('word_count', 0)
+            if isinstance(result_dict.get('extracted_text'), dict)
+            else 0
+        )
+
         record_extraction_success(
             file_path=file_path,
             duration=duration,
-            text_length=(
-                len(result.get('extracted_text', {}).get('content', ''))
-                if isinstance(result, dict)
-                else 0
-            ),
-            word_count=(
-                result.get('extracted_text', {}).get('word_count', 0)
-                if isinstance(result, dict)
-                else 0
-            ),
+            text_length=len(text_content),
+            word_count=word_count_val,
         )
 
         # Fortschritt melden
@@ -128,13 +134,13 @@ def extract_file_task(job_id: str) -> dict[str, Any]:
             meta={'progress': 90},
         )
 
-        # Ergebnis in Redis speichern
-        result_dict = result.dict()
+        # Ergebnis in Redis speichern (als JSON)
+        import json
         queue.redis_client.hset(
             f'job:{job_id}',
             mapping={
                 'status': 'completed',
-                'result': str(result_dict),  # Vereinfachte Speicherung
+                'result': json.dumps(result_dict, ensure_ascii=False),
             },
         )
 

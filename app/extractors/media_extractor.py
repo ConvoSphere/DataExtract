@@ -7,14 +7,8 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
-try:
-    import speech_recognition as sr
-    from moviepy.editor import AudioFileClip, VideoFileClip
-    from pydub import AudioSegment
-
-    MEDIA_AVAILABLE = True
-except ImportError:
-    MEDIA_AVAILABLE = False
+# Defer heavy media imports to runtime to reduce idle memory usage
+MEDIA_AVAILABLE = True
 
 from app.core.config import settings
 from app.extractors.base import BaseExtractor
@@ -94,6 +88,8 @@ class MediaExtractor(BaseExtractor):
         try:
             if self._is_video_file(file_path):
                 # Video-Metadaten
+                from moviepy.editor import VideoFileClip  # type: ignore
+
                 clip = VideoFileClip(str(file_path))
                 metadata.duration = clip.duration
                 metadata.dimensions = {
@@ -106,6 +102,8 @@ class MediaExtractor(BaseExtractor):
 
             elif self._is_audio_file(file_path):
                 # Audio-Metadaten
+                from pydub import AudioSegment  # type: ignore
+
                 audio = AudioSegment.from_file(str(file_path))
                 metadata.duration = len(audio) / 1000.0  # Konvertiere zu Sekunden
                 metadata.channels = audio.channels
@@ -206,12 +204,16 @@ class MediaExtractor(BaseExtractor):
         try:
             # Audio zu WAV konvertieren (für bessere Kompatibilität)
             with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_wav:
+                from pydub import AudioSegment  # type: ignore
+
                 audio = AudioSegment.from_file(str(file_path))
                 audio.export(temp_wav.name, format='wav')
                 temp_wav_path = temp_wav.name
 
             try:
                 # Speech Recognition
+                import speech_recognition as sr  # type: ignore
+
                 recognizer = sr.Recognizer()
                 with sr.AudioFile(temp_wav_path) as source:
                     audio_data = recognizer.record(source)
@@ -229,6 +231,8 @@ class MediaExtractor(BaseExtractor):
         try:
             # Audio aus Video extrahieren
             with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_audio:
+                from moviepy.editor import VideoFileClip  # type: ignore
+
                 video = VideoFileClip(str(file_path))
                 video.audio.write_audiofile(temp_audio.name, verbose=False, logger=None)
                 video.close()
@@ -272,6 +276,8 @@ class MediaExtractor(BaseExtractor):
     def _extract_audio_info(self, file_path: Path) -> ExtractedMedia:
         """Extrahiert Audio-Informationen."""
         try:
+            from pydub import AudioSegment  # type: ignore
+
             audio = AudioSegment.from_file(str(file_path))
 
             return ExtractedMedia(
