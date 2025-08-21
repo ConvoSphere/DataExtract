@@ -5,17 +5,10 @@ Extraktor für Bilddateien mit OCR-Funktionalität.
 from datetime import datetime
 from pathlib import Path
 
-import cv2
-import numpy as np
 from PIL import Image
 
-try:
-    import easyocr
-    import pytesseract
-
-    OCR_AVAILABLE = True
-except ImportError:
-    OCR_AVAILABLE = False
+# Heavy OCR dependencies are imported lazily inside methods to reduce baseline memory usage
+OCR_AVAILABLE = True
 
 from app.core.config import settings
 from app.extractors.base import BaseExtractor
@@ -136,6 +129,9 @@ class ImageExtractor(BaseExtractor):
 
                 # OCR mit EasyOCR (bessere Ergebnisse)
                 try:
+                    # Lazy import to avoid loading torch unless needed
+                    import easyocr  # type: ignore
+
                     reader = easyocr.Reader(['de', 'en'])
                     results = reader.readtext(img_array)
 
@@ -156,6 +152,8 @@ class ImageExtractor(BaseExtractor):
                 except Exception:
                     # Fallback zu Tesseract
                     try:
+                        import pytesseract  # type: ignore
+
                         content = pytesseract.image_to_string(img, lang='deu+eng')
                         ocr_used = True
                         ocr_confidence = 0.8  # Standard-Konfidenz für Tesseract
@@ -208,16 +206,18 @@ class ImageExtractor(BaseExtractor):
         }
         return mime_types.get(extension, 'image/jpeg')
 
-    def _prepare_image_for_ocr(self, img: Image.Image) -> np.ndarray:
+    def _prepare_image_for_ocr(self, img: Image.Image):
         """Bereitet ein Bild für OCR vor."""
         # Zu RGB konvertieren
         if img.mode != 'RGB':
             img = img.convert('RGB')
 
         # Zu NumPy-Array konvertieren
+        import numpy as np  # Lazy import
         img_array = np.array(img)
 
         # Graustufen konvertieren
+        import cv2  # Lazy import
         gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
 
         # Rauschunterdrückung
@@ -244,6 +244,7 @@ class ImageExtractor(BaseExtractor):
         if settings.extract_image_text and OCR_AVAILABLE:
             try:
                 img_array = self._prepare_image_for_ocr(img)
+                import easyocr  # type: ignore
                 reader = easyocr.Reader(['de', 'en'])
                 results = reader.readtext(img_array)
 

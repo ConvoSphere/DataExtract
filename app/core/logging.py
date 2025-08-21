@@ -83,8 +83,13 @@ def setup_opentelemetry() -> None:
             otlp_trace_exporter = OTLPSpanExporter(endpoint=settings.otlp_endpoint)
             tracer_provider.add_span_processor(BatchSpanProcessor(otlp_trace_exporter))
 
-    # Tracer Provider setzen
-    trace.set_tracer_provider(tracer_provider)
+    # Tracer Provider setzen (nur falls noch nicht gesetzt)
+    try:
+        # Avoid overriding an existing provider (pytest may import app multiple times)
+        if trace.get_tracer_provider().__class__.__name__ == 'DefaultTracerProvider':
+            trace.set_tracer_provider(tracer_provider)
+    except Exception:
+        trace.set_tracer_provider(tracer_provider)
 
     # Meter Provider konfigurieren
     if settings.enable_metrics:
@@ -107,9 +112,19 @@ def setup_opentelemetry() -> None:
             metrics.set_meter_provider(meter_provider)
 
     # Instrumentierungen aktivieren
-    LoggingInstrumentor().instrument()
-    RequestsInstrumentor().instrument()
-    RedisInstrumentor().instrument()
+    # Idempotent instrumentations
+    try:
+        LoggingInstrumentor().instrument()
+    except Exception:
+        pass
+    try:
+        RequestsInstrumentor().instrument()
+    except Exception:
+        pass
+    try:
+        RedisInstrumentor().instrument()
+    except Exception:
+        pass
 
 
 def get_logger(name: str) -> structlog.stdlib.BoundLogger:

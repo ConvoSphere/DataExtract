@@ -52,14 +52,14 @@ class ExtractorFactory:
         try:
             from app.extractors.image_extractor import ImageExtractor
 
-            self._register_extractor(ImageExtractor(), priority=8)
+            self._register_extractor(ImageExtractor(), priority=12)
         except ImportError:
             pass
 
         try:
             from app.extractors.media_extractor import MediaExtractor
 
-            self._register_extractor(MediaExtractor(), priority=9)
+            self._register_extractor(MediaExtractor(), priority=15)
         except ImportError:
             pass
 

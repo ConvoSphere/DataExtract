@@ -44,6 +44,18 @@ class TikaExtractor(BaseExtractor):
         # Sonst: generisch ja, aber die Factory-Order stellt sicher, dass Tika zuletzt greift
         return True
 
+    @staticmethod
+    def is_available() -> bool:
+        """Prüft schnell, ob der Tika-Server erreichbar ist."""
+        try:
+            timeout = httpx.Timeout(connect=0.2, read=0.2, write=0.2, pool=0.2)
+            url = settings.tika_server_url.rstrip('/') + '/tika'
+            with httpx.Client(timeout=timeout) as client:
+                resp = client.get(url)
+                return resp.status_code == 200
+        except Exception:
+            return False
+
     def extract_metadata(self, file_path: Path) -> FileMetadata:
         stat = file_path.stat()
         metadata = FileMetadata(
