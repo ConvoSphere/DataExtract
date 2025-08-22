@@ -48,10 +48,12 @@ async def extract_file(
     include_metadata: bool = Form(True, description='Metadaten extrahieren'),
     include_text: bool = Form(True, description='Text extrahieren'),
     include_structure: bool = Form(
-        False, description='Strukturierte Daten extrahieren',
+        False,
+        description='Strukturierte Daten extrahieren',
     ),
     language: str | None = Form(
-        None, description='Sprache für die Extraktion (ISO 639-1)',
+        None,
+        description='Sprache für die Extraktion (ISO 639-1)',
     ),
     user: dict = Depends(get_current_user),
     _: dict = Depends(check_rate_limit),
@@ -126,6 +128,7 @@ async def extract_file(
             # Optionale Qualitäts-Eskalation zu Tika: Wenn Ergebnis schwach ist
             try:
                 from app.core.config import settings as _settings
+
                 if _settings.enable_tika and include_text:
                     text_len = (
                         len(result.extracted_text.content)
@@ -135,9 +138,12 @@ async def extract_file(
                     # einfache Heuristik: sehr kurzer/leerer Text -> Tika-Fallback
                     if text_len < 20:
                         from app.extractors.tika_extractor import TikaExtractor
+
                         # Vermeide teure/fehlerhafte Fallbacks wenn Tika nicht verfügbar ist
                         if not TikaExtractor.is_available():
-                            raise RuntimeError('Tika server not available, skipping fallback')
+                            raise RuntimeError(
+                                'Tika server not available, skipping fallback',
+                            )
                         # Metrik erhöhen
                         try:
                             record_tika_fallback()

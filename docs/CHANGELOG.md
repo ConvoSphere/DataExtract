@@ -108,13 +108,13 @@ If you're upgrading from a previous version:
    ```bash
    # Old
    docker-compose up -d
-   
+
    # New - Development
    docker-compose up -d
-   
+
    # New - Testing with monitoring
    docker-compose -f docker-compose.test.yml up -d
-   
+
    # New - Production
    docker-compose -f docker-compose.prod.yml up -d
    ```
@@ -125,10 +125,10 @@ If you're upgrading from a previous version:
    make setup-dev
    make setup-test
    make setup-prod
-   
+
    # Quality checks
    make quality
-   
+
    # Docker operations
    make docker-dev
    make docker-test

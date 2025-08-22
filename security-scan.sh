@@ -51,7 +51,7 @@ log_info "Scanning Docker image for vulnerabilities..."
 if command -v trivy &> /dev/null; then
     # Build image first
     docker build -t file-extractor:security-scan .
-    
+
     # Scan with Trivy
     trivy image --format json --output trivy-report.json file-extractor:security-scan || {
         log_warn "Trivy found vulnerabilities. Check trivy-report.json"

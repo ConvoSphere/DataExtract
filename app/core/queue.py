@@ -60,7 +60,9 @@ class InMemoryJobQueue:
             minutes=5 if priority == 'high' else 15 if priority == 'normal' else 30,
         )
         return AsyncExtractionResponse(
-            job_id=job_id, status='queued', estimated_completion=estimated,
+            job_id=job_id,
+            status='queued',
+            estimated_completion=estimated,
         )
 
     def get_job_status(self, job_id: str) -> JobStatus | None:
@@ -244,6 +246,7 @@ class JobQueue:
         if result is None:
             try:
                 import json
+
                 stored_result = job_data.get('result')
                 if stored_result:
                     result = json.loads(stored_result)

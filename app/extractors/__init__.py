@@ -66,6 +66,7 @@ class ExtractorFactory:
         # Tika-Extraktor als letzter Fallback (optional)
         try:
             from app.core.config import settings
+
             if settings.enable_tika:
                 from app.extractors.tika_extractor import TikaExtractor
 

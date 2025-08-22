@@ -8,7 +8,10 @@ from typing import Any
 import requests
 
 
-def extract_with_docling(file_path: str, api_url: str = 'http://localhost:8000') -> dict[str, Any]:
+def extract_with_docling(
+    file_path: str,
+    api_url: str = 'http://localhost:8000',
+) -> dict[str, Any]:
     """
     Extrahiert Inhalte aus einer Datei mit docling-Unterstützung.
 
@@ -42,7 +45,10 @@ def extract_with_docling(file_path: str, api_url: str = 'http://localhost:8000')
     raise Exception(f'API-Fehler: {response.status_code} - {response.text}')
 
 
-def extract_async_with_docling(file_path: str, api_url: str = 'http://localhost:8000') -> dict[str, Any]:
+def extract_async_with_docling(
+    file_path: str,
+    api_url: str = 'http://localhost:8000',
+) -> dict[str, Any]:
     """
     Asynchrone Extraktion mit docling-Unterstützung.
 
@@ -77,7 +83,10 @@ def extract_async_with_docling(file_path: str, api_url: str = 'http://localhost:
     raise Exception(f'API-Fehler: {response.status_code} - {response.text}')
 
 
-def get_job_status(job_id: str, api_url: str = 'http://localhost:8000') -> dict[str, Any]:
+def get_job_status(
+    job_id: str,
+    api_url: str = 'http://localhost:8000',
+) -> dict[str, Any]:
     """
     Abfrage des Job-Status.
 
@@ -103,7 +112,6 @@ def analyze_document(file_path: str) -> None:
     Args:
         file_path: Pfad zur Datei
     """
-
 
     try:
         # Synchrone Extraktion
@@ -165,19 +173,17 @@ def analyze_large_document(file_path: str) -> None:
         file_path: Pfad zur Datei
     """
 
-
     try:
         # Asynchrone Extraktion starten
         job_info = extract_async_with_docling(file_path)
         job_id = job_info['job_id']
 
-
         # Status abfragen
         import time
+
         while True:
             time.sleep(2)  # 2 Sekunden warten
             status = get_job_status(job_id)
-
 
             if status['status'] in ['completed', 'failed']:
                 break
@@ -206,7 +212,6 @@ def main():
         'samples/sample.csv',
     ]
 
-
     # API-Status prüfen
     try:
         response = requests.get('http://localhost:8000/api/v1/health')
@@ -216,7 +221,6 @@ def main():
             return
     except Exception:
         return
-
 
     # Dateien analysieren
     for file_path in sample_files:

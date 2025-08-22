@@ -180,7 +180,9 @@ def setup_custom_metrics() -> dict:
         ),
         # Histogram für Dateigrößen
         'file_size_bytes': meter.create_histogram(
-            name='file_size_bytes', description='Size of processed files', unit='bytes',
+            name='file_size_bytes',
+            description='Size of processed files',
+            unit='bytes',
         ),
     }
 
@@ -188,7 +190,8 @@ def setup_custom_metrics() -> dict:
 
 
 def log_request_info(
-    logger: structlog.stdlib.BoundLogger, request_info: dict[str, Any],
+    logger: structlog.stdlib.BoundLogger,
+    request_info: dict[str, Any],
 ) -> None:
     """Loggt Request-Informationen strukturiert."""
     logger.info(
@@ -203,7 +206,8 @@ def log_request_info(
 
 
 def log_extraction_start(
-    logger: structlog.stdlib.BoundLogger, file_info: dict[str, Any],
+    logger: structlog.stdlib.BoundLogger,
+    file_info: dict[str, Any],
 ) -> None:
     """Loggt den Start einer Extraktion."""
     logger.info(
@@ -216,7 +220,8 @@ def log_extraction_start(
 
 
 def log_extraction_complete(
-    logger: structlog.stdlib.BoundLogger, result_info: dict[str, Any],
+    logger: structlog.stdlib.BoundLogger,
+    result_info: dict[str, Any],
 ) -> None:
     """Loggt den Abschluss einer Extraktion."""
     logger.info(
@@ -232,7 +237,8 @@ def log_extraction_complete(
 
 
 def log_extraction_error(
-    logger: structlog.stdlib.BoundLogger, error_info: dict[str, Any],
+    logger: structlog.stdlib.BoundLogger,
+    error_info: dict[str, Any],
 ) -> None:
     """Loggt Extraktionsfehler."""
     logger.error(
@@ -245,7 +251,8 @@ def log_extraction_error(
 
 
 def log_job_status(
-    logger: structlog.stdlib.BoundLogger, job_info: dict[str, Any],
+    logger: structlog.stdlib.BoundLogger,
+    job_info: dict[str, Any],
 ) -> None:
     """Loggt Job-Status-Änderungen."""
     logger.info(

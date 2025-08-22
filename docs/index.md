@@ -31,7 +31,7 @@ with open('document.pdf', 'rb') as f:
         files={'file': f},
         data={'include_metadata': 'true', 'include_text': 'true'}
     )
-    
+
 result = response.json()
 print(f"Extracted text: {result['extracted_text']['content'][:200]}...")
 ```

@@ -87,7 +87,8 @@ class FileValidator:
         }
 
     async def validate_upload_file(
-        self, file: UploadFile,
+        self,
+        file: UploadFile,
     ) -> tuple[bool, str, dict | None]:
         """
         Validiert eine hochgeladene Datei umfassend.
@@ -121,7 +122,8 @@ class FileValidator:
 
             # 4. Temporäre Datei erstellen für weitere Validierung
             with tempfile.NamedTemporaryFile(
-                delete=False, suffix=extension,
+                delete=False,
+                suffix=extension,
             ) as temp_file:
                 content = await file.read()
                 temp_file.write(content)

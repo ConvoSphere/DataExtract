@@ -214,10 +214,12 @@ class ImageExtractor(BaseExtractor):
 
         # Zu NumPy-Array konvertieren
         import numpy as np  # Lazy import
+
         img_array = np.array(img)
 
         # Graustufen konvertieren
         import cv2  # Lazy import
+
         gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
 
         # Rauschunterdrückung
@@ -245,6 +247,7 @@ class ImageExtractor(BaseExtractor):
             try:
                 img_array = self._prepare_image_for_ocr(img)
                 import easyocr  # type: ignore
+
                 reader = easyocr.Reader(['de', 'en'])
                 results = reader.readtext(img_array)
 
@@ -271,7 +274,9 @@ class ImageExtractor(BaseExtractor):
         return image_info
 
     def _extract_color_palette(
-        self, img: Image.Image, num_colors: int = 5,
+        self,
+        img: Image.Image,
+        num_colors: int = 5,
     ) -> list[str]:
         """Extrahiert die dominanten Farben aus einem Bild."""
         try:

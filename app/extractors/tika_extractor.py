@@ -4,10 +4,10 @@ Apache Tika-basierter Extraktor als letzter Fallback.
 
 from __future__ import annotations
 
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-import time
 
 import httpx
 
@@ -81,12 +81,23 @@ class TikaExtractor(BaseExtractor):
                     data = resp.json()
 
                     # Häufige Tika-Felder mappen (variieren je nach Parser)
-                    metadata.title = _first_of(data, ['dc:title', 'title', 'pdf:docinfo:title'])
-                    metadata.author = _first_of(data, ['Author', 'meta:author', 'dc:creator'])
+                    metadata.title = _first_of(
+                        data,
+                        ['dc:title', 'title', 'pdf:docinfo:title'],
+                    )
+                    metadata.author = _first_of(
+                        data,
+                        ['Author', 'meta:author', 'dc:creator'],
+                    )
                     metadata.subject = _first_of(data, ['subject', 'dc:subject'])
-                    keywords = _first_of(data, ['Keywords', 'pdf:docinfo:keywords', 'dc:subject'])
+                    keywords = _first_of(
+                        data,
+                        ['Keywords', 'pdf:docinfo:keywords', 'dc:subject'],
+                    )
                     if isinstance(keywords, str):
-                        metadata.keywords = [k.strip() for k in keywords.split(',') if k.strip()]
+                        metadata.keywords = [
+                            k.strip() for k in keywords.split(',') if k.strip()
+                        ]
                     page_count = _first_of(data, ['xmpTPg:NPages', 'Page-Count'])
                     if page_count is not None:
                         try:
@@ -97,7 +108,11 @@ class TikaExtractor(BaseExtractor):
                 except Exception as e:
                     attempt += 1
                     if attempt > settings.tika_max_retries:
-                        self.logger.warning('Tika metadata extraction failed', filename=file_path.name, error=str(e))
+                        self.logger.warning(
+                            'Tika metadata extraction failed',
+                            filename=file_path.name,
+                            error=str(e),
+                        )
                         break
                     time.sleep(backoff)
                     backoff *= 2
@@ -119,8 +134,10 @@ class TikaExtractor(BaseExtractor):
                             {
                                 'X-Tika-OCRLanguage': settings.tika_ocr_langs,
                                 'X-Tika-PDFextractInlineImages': 'true',
-                                'X-Tika-OCRTimeout': str(max(1, settings.tika_timeout - 1)),
-                            }
+                                'X-Tika-OCRTimeout': str(
+                                    max(1, settings.tika_timeout - 1),
+                                ),
+                            },
                         )
                     with open(file_path, 'rb') as f:
                         resp = self._client.put('/tika', headers=headers, content=f)

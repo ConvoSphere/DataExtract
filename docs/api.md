@@ -207,7 +207,7 @@ with open('document.pdf', 'rb') as f:
         'include_text': 'true',
         'include_structured_data': 'true'
     }
-    response = requests.post('http://localhost:8000/api/v1/extract', 
+    response = requests.post('http://localhost:8000/api/v1/extract',
                            files=files, data=data)
     result = response.json()
     print(f"Extracted text: {result['extracted_text']['content'][:200]}...")
@@ -216,7 +216,7 @@ with open('document.pdf', 'rb') as f:
 with open('large_document.pdf', 'rb') as f:
     files = {'file': f}
     data = {'priority': 'high'}
-    response = requests.post('http://localhost:8000/api/v1/extract/async', 
+    response = requests.post('http://localhost:8000/api/v1/extract/async',
                            files=files, data=data)
     job_id = response.json()['job_id']
 

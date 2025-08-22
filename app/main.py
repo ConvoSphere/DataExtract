@@ -48,7 +48,8 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             span.set_attribute('http.url', str(request.url))
             span.set_attribute('http.user_agent', request.headers.get('user-agent', ''))
             span.set_attribute(
-                'http.client_ip', request.client.host if request.client else '',
+                'http.client_ip',
+                request.client.host if request.client else '',
             )
 
             # Request verarbeiten
@@ -251,7 +252,8 @@ if not settings.debug:
 # Exception Handler für FileExtractorException
 @app.exception_handler(FileExtractorException)
 async def file_extractor_exception_handler(
-    request: Request, exc: FileExtractorException,
+    request: Request,
+    exc: FileExtractorException,
 ):
     """Exception Handler für FileExtractorException."""
     http_exception = convert_to_http_exception(exc)
@@ -264,7 +266,8 @@ async def file_extractor_exception_handler(
 # Exception Handler für Validierungsfehler
 @app.exception_handler(RequestValidationError)
 async def request_validation_exception_handler(
-    request: Request, exc: RequestValidationError,
+    request: Request,
+    exc: RequestValidationError,
 ):
     content_type = request.headers.get('content-type', '')
     path = str(request.url.path)
