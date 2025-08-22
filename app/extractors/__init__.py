@@ -3,7 +3,6 @@ Factory für Datei-Extraktoren.
 """
 
 from pathlib import Path
-from typing import List, Optional
 
 import magic
 
@@ -85,7 +84,7 @@ class ExtractorFactory:
         try:
             # MIME-Type ermitteln
             mime_type = magic.from_file(str(file_path), mime=True)
-        except Exception:
+        except (OSError, AttributeError):
             mime_type = 'application/octet-stream'
 
         # Extraktor mit höchster Priorität finden

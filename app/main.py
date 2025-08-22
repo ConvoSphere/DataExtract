@@ -222,7 +222,8 @@ if settings.enable_opentelemetry:
         FastAPIInstrumentor.instrument_app(app)
     except (RuntimeError, ImportError) as err:
         get_logger('startup').warning(
-            'OpenTelemetry instrumentation failed', error=str(err)
+            'OpenTelemetry instrumentation failed',
+            error=str(err),
         )
 
 # Security Middleware hinzufügen

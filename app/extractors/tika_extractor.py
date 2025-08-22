@@ -150,7 +150,7 @@ class TikaExtractor(BaseExtractor):
                     attempt += 1
                     if attempt > settings.tika_max_retries:
                         raise RuntimeError(
-                            'Tika-Text-Extraktion fehlgeschlagen'
+                            'Tika-Text-Extraktion fehlgeschlagen',
                         ) from err
                     time.sleep(backoff)
                     backoff *= 2

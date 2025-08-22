@@ -1,6 +1,8 @@
 """
-Input Validation für die Universal File Extractor API.
+Validierung und Sicherheit der hochgeladenen Dateien.
 """
+
+from __future__ import annotations
 
 import hashlib
 import mimetypes
@@ -170,11 +172,11 @@ class FileValidator:
                 return True, '', file_info
 
             finally:
-                # Do not delete temp file here; routes are responsible for cleanup after processing
+                # Do not delete temp file here; routes are responsible for cleanup
                 pass
 
-        except Exception as e:
-            logger.error(f'File validation error: {e}')
+        except (OSError, ValueError) as e:
+            logger.error('File validation error', error=str(e))
             return False, f'Validierungsfehler: {e!s}', None
 
     def _get_mime_type(self, file_path: Path) -> str:
@@ -183,7 +185,7 @@ class FileValidator:
             # Python-magic für präzise MIME-Type Erkennung
             mime_type = magic.from_file(str(file_path), mime=True)
             return mime_type
-        except Exception:
+        except (OSError, AttributeError):
             # Fallback: mimetypes Modul
             mime_type, _ = mimetypes.guess_type(str(file_path))
             return mime_type or 'application/octet-stream'
@@ -191,11 +193,11 @@ class FileValidator:
     def _is_mime_type_allowed(self, mime_type: str) -> bool:
         """Prüft, ob ein MIME-Type erlaubt ist."""
         if mime_type in self.dangerous_mime_types:
-            logger.warning(f'Dangerous MIME type detected: {mime_type}')
+            logger.warning('Dangerous MIME type detected', mime_type=mime_type)
             return False
 
         if mime_type not in self.allowed_mime_types:
-            logger.warning(f'Unallowed MIME type: {mime_type}')
+            logger.warning('Unallowed MIME type', mime_type=mime_type)
             return False
 
         return True
@@ -203,7 +205,7 @@ class FileValidator:
     def _validate_file_signature(self, file_path: Path, extension: str) -> bool:
         """Validiert die Datei-Signatur (Magic Bytes)."""
         try:
-            with open(file_path, 'rb') as f:
+            with file_path.open('rb') as f:
                 header = f.read(16)  # Erste 16 Bytes lesen
 
             # Datei-Signaturen (Magic Bytes)
@@ -234,14 +236,14 @@ class FileValidator:
 
             return header.startswith(expected_signature)
 
-        except Exception as e:
-            logger.warning(f'File signature validation error: {e}')
+        except (OSError, ValueError) as e:
+            logger.warning('File signature validation error', error=str(e))
             return True  # Bei Fehlern erlauben
 
     def _basic_malware_scan(self, file_path: Path) -> bool:
         """Führt einen Basic Malware-Scan durch."""
         try:
-            with open(file_path, 'rb') as f:
+            with file_path.open('rb') as f:
                 content = f.read()
 
             # Einfache Heuristiken für verdächtige Inhalte
@@ -258,7 +260,7 @@ class FileValidator:
 
             for pattern in suspicious_patterns:
                 if pattern in content:
-                    logger.warning(f'Suspicious pattern detected: {pattern}')
+                    logger.warning('Suspicious pattern detected', pattern=str(pattern))
                     return False
 
             # Prüfe auf verdächtige Dateinamen
@@ -278,33 +280,37 @@ class FileValidator:
             filename_lower = file_path.name.lower()
             for suspicious in suspicious_names:
                 if suspicious in filename_lower:
-                    logger.warning(f'Suspicious filename detected: {filename_lower}')
+                    logger.warning(
+                        'Suspicious filename detected', filename=filename_lower
+                    )
                     return False
 
             return True
 
-        except Exception as e:
-            logger.warning(f'Malware scan error: {e}')
+        except (OSError, ValueError) as e:
+            logger.warning('Malware scan error', error=str(e))
             return True  # Bei Fehlern erlauben
 
     def _calculate_file_hash(self, file_path: Path) -> str:
         """Berechnet den SHA-256 Hash einer Datei."""
         try:
             sha256_hash = hashlib.sha256()
-            with open(file_path, 'rb') as f:
+            with file_path.open('rb') as f:
                 for chunk in iter(lambda: f.read(4096), b''):
                     sha256_hash.update(chunk)
             return sha256_hash.hexdigest()
-        except Exception as e:
-            logger.warning(f'Hash calculation error: {e}')
+        except (OSError, ValueError) as e:
+            logger.warning('Hash calculation error', error=str(e))
             return ''
 
     def cleanup_temp_file(self, temp_path: str) -> None:
         """Löscht eine temporäre Datei."""
         try:
             Path(temp_path).unlink()
-        except Exception as e:
-            logger.warning(f'Failed to cleanup temp file {temp_path}: {e}')
+        except OSError as e:
+            logger.warning(
+                'Failed to cleanup temp file', temp_path=temp_path, error=str(e)
+            )
 
 
 # Globale Validator-Instanz
@@ -327,7 +333,7 @@ async def validate_file_upload(file: UploadFile) -> dict:
     is_valid, error_message, file_info = await file_validator.validate_upload_file(file)
 
     if not is_valid:
-        logger.warning(f'File validation failed: {error_message}')
+        logger.warning('File validation failed', error_message=error_message)
         # Mappe spezifische Validierungsfehler auf passende Statuscodes
         if error_message.startswith('UNSUPPORTED_EXTENSION:'):
             raise HTTPException(
