@@ -2,13 +2,12 @@
 Extraktor für Medien-Dateien (Video/Audio) mit Transkription.
 """
 
-import os
 import tempfile
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
-# Defer heavy media imports to runtime to reduce idle memory usage
 MEDIA_AVAILABLE = True
+# Defer heavy media imports to runtime to reduce idle memory usage
 
 from app.core.config import settings
 from app.extractors.base import BaseExtractor
@@ -81,8 +80,8 @@ class MediaExtractor(BaseExtractor):
             file_size=stat.st_size,
             file_type=self._get_mime_type(file_path),
             file_extension=file_path.suffix.lower(),
-            created_date=datetime.fromtimestamp(stat.st_ctime),
-            modified_date=datetime.fromtimestamp(stat.st_mtime),
+            created_date=datetime.fromtimestamp(stat.st_ctime, tz=UTC),
+            modified_date=datetime.fromtimestamp(stat.st_mtime, tz=UTC),
         )
 
         try:
@@ -109,7 +108,7 @@ class MediaExtractor(BaseExtractor):
                 metadata.channels = audio.channels
                 metadata.sample_rate = audio.frame_rate
 
-        except Exception:
+        except (OSError, RuntimeError, AttributeError):
             pass
 
         return metadata
@@ -129,7 +128,7 @@ class MediaExtractor(BaseExtractor):
                 # Video-Transkription (Audio-Extraktion + Transkription)
                 content = self._transcribe_video(file_path)
 
-        except Exception:
+        except (RuntimeError, OSError, AttributeError):
             pass
 
         # Statistiken berechnen
@@ -154,7 +153,7 @@ class MediaExtractor(BaseExtractor):
                 media_info = self._extract_audio_info(file_path)
                 media_list.append(media_info)
 
-        except Exception:
+        except (OSError, RuntimeError, AttributeError):
             pass
 
         return StructuredData(media=media_list)
@@ -220,10 +219,11 @@ class MediaExtractor(BaseExtractor):
                     return recognizer.recognize_google(audio_data, language='de-DE')
             finally:
                 # Temporäre Datei löschen
-                if os.path.exists(temp_wav_path):
-                    os.unlink(temp_wav_path)
+                path_obj = Path(temp_wav_path)
+                if path_obj.exists():
+                    path_obj.unlink(missing_ok=True)
 
-        except Exception:
+        except (OSError, RuntimeError, AttributeError):
             return ''
 
     def _transcribe_video(self, file_path: Path) -> str:
@@ -243,15 +243,18 @@ class MediaExtractor(BaseExtractor):
                 return self._transcribe_audio(Path(temp_audio_path))
             finally:
                 # Temporäre Datei löschen
-                if os.path.exists(temp_audio_path):
-                    os.unlink(temp_audio_path)
+                path_obj = Path(temp_audio_path)
+                if path_obj.exists():
+                    path_obj.unlink(missing_ok=True)
 
-        except Exception:
+        except (OSError, RuntimeError, AttributeError):
             return ''
 
     def _extract_video_info(self, file_path: Path) -> ExtractedMedia:
         """Extrahiert Video-Informationen."""
         try:
+            from moviepy.editor import VideoFileClip  # type: ignore
+
             clip = VideoFileClip(str(file_path))
 
             media_info = ExtractedMedia(
@@ -265,7 +268,7 @@ class MediaExtractor(BaseExtractor):
             clip.close()
             return media_info
 
-        except Exception:
+        except (OSError, RuntimeError, AttributeError):
             # Fallback-Informationen
             return ExtractedMedia(
                 media_type='video',
@@ -288,7 +291,7 @@ class MediaExtractor(BaseExtractor):
                 sample_rate=audio.frame_rate,
             )
 
-        except Exception:
+        except (OSError, RuntimeError, AttributeError):
             # Fallback-Informationen
             return ExtractedMedia(
                 media_type='audio',

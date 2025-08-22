@@ -77,7 +77,9 @@ def extract_file_task(job_id: str) -> dict[str, Any]:
 
         # Metrics für Extraktionsstart
         record_extraction_start(
-            file_path=file_path, file_size=file_size, file_type=file_path.suffix.lower(),
+            file_path=file_path,
+            file_size=file_size,
+            file_type=file_path.suffix.lower(),
         )
 
         # Fortschritt melden
@@ -136,6 +138,7 @@ def extract_file_task(job_id: str) -> dict[str, Any]:
 
         # Ergebnis in Redis speichern (als JSON)
         import json
+
         queue.redis_client.hset(
             f'job:{job_id}',
             mapping={

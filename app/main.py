@@ -48,7 +48,8 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             span.set_attribute('http.url', str(request.url))
             span.set_attribute('http.user_agent', request.headers.get('user-agent', ''))
             span.set_attribute(
-                'http.client_ip', request.client.host if request.client else '',
+                'http.client_ip',
+                request.client.host if request.client else '',
             )
 
             # Request verarbeiten
@@ -141,8 +142,8 @@ async def lifespan(app: FastAPI):
                 from opentelemetry import trace
 
                 trace.get_tracer_provider().shutdown()
-            except Exception as e:
-                logger.warning(f'Error shutting down OpenTelemetry: {e}')
+            except (RuntimeError, AttributeError) as err:
+                logger.warning('Error shutting down OpenTelemetry', error=str(err))
 
         # 5. Redis-Verbindungen schließen
         logger.info('Closing Redis connections')
@@ -152,8 +153,8 @@ async def lifespan(app: FastAPI):
             queue = get_job_queue()
             if hasattr(queue, 'redis_client'):
                 queue.redis_client.close()
-        except Exception as e:
-            logger.warning(f'Error closing Redis connections: {e}')
+        except (AttributeError, RuntimeError, OSError) as err:
+            logger.warning('Error closing Redis connections', error=str(err))
 
         # 6. Temporäre Dateien bereinigen
         logger.info('Cleaning up temporary files')
@@ -164,13 +165,13 @@ async def lifespan(app: FastAPI):
             temp_dir = Path(tempfile.gettempdir()) / 'file_extractor'
             if temp_dir.exists():
                 shutil.rmtree(temp_dir, ignore_errors=True)
-        except Exception as e:
-            logger.warning(f'Error cleaning up temp files: {e}')
+        except OSError as err:
+            logger.warning('Error cleaning up temp files', error=str(err))
 
         logger.info('Graceful shutdown completed')
 
-    except Exception as e:
-        logger.error(f'Error during graceful shutdown: {e}')
+    except (RuntimeError, OSError) as err:
+        logger.error('Error during graceful shutdown', error=str(err))
 
     logger.info('Application shutdown complete')
 
@@ -219,8 +220,11 @@ if settings.enable_opentelemetry:
         from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
         FastAPIInstrumentor.instrument_app(app)
-    except Exception as e:
-        print(f'Warning: OpenTelemetry instrumentation failed: {e}')
+    except (RuntimeError, ImportError) as err:
+        get_logger('startup').warning(
+            'OpenTelemetry instrumentation failed',
+            error=str(err),
+        )
 
 # Security Middleware hinzufügen
 for middleware_class in get_security_middleware():
@@ -251,7 +255,8 @@ if not settings.debug:
 # Exception Handler für FileExtractorException
 @app.exception_handler(FileExtractorException)
 async def file_extractor_exception_handler(
-    request: Request, exc: FileExtractorException,
+    _request: Request,
+    exc: FileExtractorException,
 ):
     """Exception Handler für FileExtractorException."""
     http_exception = convert_to_http_exception(exc)
@@ -264,7 +269,8 @@ async def file_extractor_exception_handler(
 # Exception Handler für Validierungsfehler
 @app.exception_handler(RequestValidationError)
 async def request_validation_exception_handler(
-    request: Request, exc: RequestValidationError,
+    request: Request,
+    exc: RequestValidationError,
 ):
     content_type = request.headers.get('content-type', '')
     path = str(request.url.path)
@@ -286,7 +292,7 @@ async def request_validation_exception_handler(
 
 # Exception Handler für allgemeine Exceptions
 @app.exception_handler(Exception)
-async def general_exception_handler(request: Request, exc: Exception):
+async def general_exception_handler(_request: Request, exc: Exception):
     """Exception Handler für allgemeine Exceptions."""
     if settings.debug:
         # Im Debug-Modus detaillierte Fehlerinformationen

@@ -3,7 +3,7 @@ Extraktor für PDF-Dateien.
 """
 
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -48,12 +48,12 @@ class PDFExtractor(BaseExtractor):
             file_size=stat.st_size,
             file_type='application/pdf',
             file_extension='.pdf',
-            created_date=datetime.fromtimestamp(stat.st_ctime),
-            modified_date=datetime.fromtimestamp(stat.st_mtime),
+            created_date=datetime.fromtimestamp(stat.st_ctime, tz=UTC),
+            modified_date=datetime.fromtimestamp(stat.st_mtime, tz=UTC),
         )
 
         try:
-            with open(file_path, 'rb') as f:
+            with file_path.open('rb') as f:
                 pdf_reader = PyPDF2.PdfReader(f)
 
                 # PDF-spezifische Metadaten
@@ -88,7 +88,7 @@ class PDFExtractor(BaseExtractor):
         page_texts = []
 
         try:
-            with open(file_path, 'rb') as f:
+            with file_path.open('rb') as f:
                 pdf_reader = PyPDF2.PdfReader(f)
 
                 for _page_num, page in enumerate(pdf_reader.pages):
@@ -101,8 +101,8 @@ class PDFExtractor(BaseExtractor):
                         # Seite überspringen, wenn Text-Extraktion fehlschlägt
                         continue
 
-        except Exception as e:
-            raise Exception(f'PDF-Extraktion fehlgeschlagen: {e!s}')
+        except Exception as err:
+            raise RuntimeError('PDF-Extraktion fehlgeschlagen') from err
 
         # Text bereinigen
         content = self._clean_text(content)
@@ -123,7 +123,7 @@ class PDFExtractor(BaseExtractor):
         headings = []
 
         try:
-            with open(file_path, 'rb') as f:
+            with file_path.open('rb') as f:
                 pdf_reader = PyPDF2.PdfReader(f)
 
                 for page_num, page in enumerate(pdf_reader.pages):

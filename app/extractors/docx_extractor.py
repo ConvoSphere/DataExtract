@@ -3,16 +3,15 @@ Extraktor für DOCX-Dateien.
 """
 
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 try:
     from docx import Document
-    from docx.document import Document as DocumentType
     from docx.oxml.table import CT_Tbl
     from docx.oxml.text.paragraph import CT_P
-    from docx.table import Table, _Cell
+    from docx.table import Table
     from docx.text.paragraph import Paragraph
 
     DOCX_AVAILABLE = True
@@ -56,8 +55,8 @@ class DOCXExtractor(BaseExtractor):
             file_size=stat.st_size,
             file_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             file_extension=file_path.suffix.lower(),
-            created_date=datetime.fromtimestamp(stat.st_ctime),
-            modified_date=datetime.fromtimestamp(stat.st_mtime),
+            created_date=datetime.fromtimestamp(stat.st_ctime, tz=UTC),
+            modified_date=datetime.fromtimestamp(stat.st_mtime, tz=UTC),
         )
 
         try:
@@ -77,7 +76,7 @@ class DOCXExtractor(BaseExtractor):
             paragraph_count = len(doc.paragraphs)
             metadata.page_count = max(1, paragraph_count // 20)  # Grobe Schätzung
 
-        except Exception:
+        except (ValueError, AttributeError):
             pass
 
         return metadata
@@ -102,8 +101,8 @@ class DOCXExtractor(BaseExtractor):
                             content += cell.text + '\t'
                     content += '\n'
 
-        except Exception as e:
-            raise Exception(f'DOCX-Extraktion fehlgeschlagen: {e!s}')
+        except Exception as err:
+            raise RuntimeError('DOCX-Extraktion fehlgeschlagen') from err
 
         # Text bereinigen
         content = self._clean_text(content)
@@ -156,7 +155,7 @@ class DOCXExtractor(BaseExtractor):
                     if table_data:
                         tables.append(table_data)
 
-        except Exception:
+        except (ValueError, AttributeError, TypeError):
             pass
 
         return StructuredData(
@@ -257,5 +256,5 @@ class DOCXExtractor(BaseExtractor):
                 'column_count': len(headers) if headers else 0,
             }
 
-        except Exception:
+        except (ValueError, AttributeError, TypeError):
             return {}

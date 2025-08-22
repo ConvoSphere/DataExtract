@@ -126,41 +126,41 @@ from app.models.extraction_result import ExtractionResult
 
 class NewFormatExtractor(BaseExtractor):
     """Extractor for new file format."""
-    
+
     def __init__(self):
         super().__init__()
         self.supported_formats = ['.newformat']
-    
+
     async def extract(
-        self, 
-        file_path: Path, 
+        self,
+        file_path: Path,
         include_metadata: bool = True,
         include_text: bool = True,
         include_structured_data: bool = False,
         **kwargs
     ) -> ExtractionResult:
         """Extract content from new format file."""
-        
+
         # Implementation here
         content = await self._extract_content(file_path)
-        
+
         return ExtractionResult(
             success=True,
             content=content,
             metadata=self._get_metadata(file_path) if include_metadata else None,
             structured_data=self._get_structured_data(content) if include_structured_data else None
         )
-    
+
     async def _extract_content(self, file_path: Path) -> str:
         """Extract text content from file."""
         # Implementation here
         pass
-    
+
     def _get_metadata(self, file_path: Path) -> Dict[str, Any]:
         """Get file metadata."""
         # Implementation here
         pass
-    
+
     def _get_structured_data(self, content: str) -> Dict[str, Any]:
         """Extract structured data from content."""
         # Implementation here
@@ -191,22 +191,22 @@ class TestNewFormatExtractor:
     @pytest.fixture
     def extractor(self):
         return NewFormatExtractor()
-    
+
     @pytest.fixture
     def sample_file(self, tmp_path):
         file_path = tmp_path / "sample.newformat"
         file_path.write_text("Sample content")
         return file_path
-    
+
     async def test_extract_success(self, extractor, sample_file):
         result = await extractor.extract(sample_file)
         assert result.success is True
         assert "Sample content" in result.content
-    
+
     async def test_extract_unsupported_format(self, extractor, tmp_path):
         file_path = tmp_path / "sample.txt"
         file_path.write_text("Content")
-        
+
         with pytest.raises(ValueError):
             await extractor.extract(file_path)
 ```
@@ -228,7 +228,7 @@ async def new_endpoint(
     option: str = Form(default="default")
 ) -> ExtractionResult:
     """New endpoint description."""
-    
+
     # Implementation here
     pass
 ```
@@ -254,19 +254,19 @@ from app.extractors.extractor_factory import ExtractorFactory
 @shared_task(bind=True)
 def extract_file_task(self, file_path: str, options: dict):
     """Celery task for file extraction."""
-    
+
     try:
         extractor = ExtractorFactory.get_extractor(file_path)
         result = extractor.extract_sync(file_path, **options)
-        
+
         # Update task progress
         self.update_state(
             state='SUCCESS',
             meta={'result': result.dict()}
         )
-        
+
         return result.dict()
-        
+
     except Exception as exc:
         self.update_state(
             state='FAILURE',
@@ -287,7 +287,7 @@ class Settings(BaseSettings):
     # Add new configuration options
     NEW_FEATURE_ENABLED: bool = Field(default=False)
     NEW_API_KEY: str = Field(default="")
-    
+
     class Config:
         env_file = ".env"
 ```

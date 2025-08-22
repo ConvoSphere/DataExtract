@@ -1,6 +1,8 @@
 """
-Security Middleware und Headers für die Universal File Extractor API.
+Security Middleware und Utilities.
 """
+
+from __future__ import annotations
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -52,29 +54,31 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         """Validiert Request auf Security-Probleme."""
 
         # 1. Content-Length Check
-        content_length = request.headers.get('content-length')
-        if content_length:
-            try:
+        try:
+            content_length = request.headers.get('content-length')
+            if content_length is not None:
                 size = int(content_length)
                 if size > settings.max_file_size:
-                    logger.warning(f'Request too large: {size} bytes')
+                    logger.warning('Request too large', size=size)
                     return False
-            except ValueError:
-                logger.warning('Invalid content-length header')
-                return False
+        except ValueError:
+            pass
 
         # 2. Content-Type Check für Uploads
         if request.method == 'POST' and '/extract' in str(request.url):
             content_type = request.headers.get('content-type', '')
             if not content_type.startswith('multipart/form-data'):
-                logger.warning(f'Invalid content-type for upload: {content_type}')
+                logger.warning(
+                    'Invalid content-type for upload',
+                    content_type=content_type,
+                )
                 # Do not reject here; let route validation handle it
                 return True
 
         # 3. User-Agent Check (optional)
         user_agent = request.headers.get('user-agent', '')
         if self._is_suspicious_user_agent(user_agent):
-            logger.warning(f'Suspicious user agent: {user_agent}')
+            logger.warning('Suspicious user agent', user_agent=user_agent)
             # Nicht ablehnen, nur loggen
 
         # 4. Rate Limiting Check (wird in auth.py gehandhabt)
@@ -145,7 +149,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                     )
                     response.headers['Pragma'] = 'no-cache'
                     response.headers['Expires'] = '0'
-        except Exception:
+        except (AttributeError, RuntimeError):
             # Ignore errors for responses without url attribute
             pass
 
@@ -156,16 +160,10 @@ class InputSanitizationMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         """Sanitized Request-Input."""
 
-        # Request-URL sanitizen
-        sanitized_url = self._sanitize_url(str(request.url))
-
-        # Request-Headers sanitizen
-        sanitized_headers = self._sanitize_headers(dict(request.headers))
-
-        # Response verarbeiten
-        response = await call_next(request)
-
-        return response
+        # Response verarbeiten (Sanitizing-Ergebnisse aktuell nur intern genutzt)
+        _ = self._sanitize_url(str(request.url))
+        _ = self._sanitize_headers(dict(request.headers))
+        return await call_next(request)
 
     def _sanitize_url(self, url: str) -> str:
         """Sanitized URL-Input."""

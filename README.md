@@ -76,7 +76,7 @@ import requests
 with open('document.pdf', 'rb') as f:
     files = {'file': f}
     response = requests.post('http://localhost:8000/api/v1/extract', files=files)
-    
+
 result = response.json()
 print(f"Extrahierter Text: {result['extracted_text']['content'][:200]}...")
 ```

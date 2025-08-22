@@ -4,7 +4,7 @@ Queue-Verwaltung für asynchrone Verarbeitung.
 
 import os
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +30,7 @@ class InMemoryJobQueue:
     def submit_job(
         self,
         file_path: Path,
+        *,
         include_metadata: bool = True,
         include_text: bool = True,
         include_structure: bool = False,
@@ -39,7 +40,7 @@ class InMemoryJobQueue:
         priority: str = 'normal',
     ) -> AsyncExtractionResponse:
         job_id = str(uuid.uuid4())
-        now = datetime.now()
+        now = datetime.now(UTC)
         self.jobs[job_id] = {
             'job_id': job_id,
             'file_path': str(file_path),
@@ -60,7 +61,9 @@ class InMemoryJobQueue:
             minutes=5 if priority == 'high' else 15 if priority == 'normal' else 30,
         )
         return AsyncExtractionResponse(
-            job_id=job_id, status='queued', estimated_completion=estimated,
+            job_id=job_id,
+            status='queued',
+            estimated_completion=estimated,
         )
 
     def get_job_status(self, job_id: str) -> JobStatus | None:
@@ -70,7 +73,7 @@ class InMemoryJobQueue:
         created_at = (
             job['created_at']
             if isinstance(job['created_at'], datetime)
-            else datetime.now()
+            else datetime.now(UTC)
         )
         return JobStatus(
             job_id=job_id,
@@ -105,7 +108,7 @@ class InMemoryJobQueue:
         }
 
     def cleanup_old_jobs(self, max_age_hours: int = 24) -> int:
-        cutoff = datetime.now() - timedelta(hours=max_age_hours)
+        cutoff = datetime.now(UTC) - timedelta(hours=max_age_hours)
         to_delete = [
             job_id for job_id, job in self.jobs.items() if job['created_at'] < cutoff
         ]
@@ -153,6 +156,7 @@ class JobQueue:
     def submit_job(
         self,
         file_path: Path,
+        *,
         include_metadata: bool = True,
         include_text: bool = True,
         include_structure: bool = False,
@@ -176,7 +180,7 @@ class JobQueue:
             'include_media': include_media,
             'callback_url': callback_url,
             'priority': priority,
-            'created_at': datetime.now().isoformat(),
+            'created_at': datetime.now(UTC).isoformat(),
             'status': 'queued',
         }
 
@@ -229,12 +233,9 @@ class JobQueue:
 
             if celery_status == 'SUCCESS':
                 progress = 100.0
-                try:
-                    result_data = async_result.result
-                    if isinstance(result_data, dict):
-                        result = result_data
-                except Exception as e:
-                    error = str(e)
+                result_data = async_result.result
+                if isinstance(result_data, dict):
+                    result = result_data
             elif celery_status == 'FAILURE':
                 error = str(async_result.info)
             elif celery_status == 'PROGRESS':
@@ -242,16 +243,18 @@ class JobQueue:
 
         # Fallback: Resultat aus Redis lesen, wenn leer
         if result is None:
-            try:
-                import json
-                stored_result = job_data.get('result')
-                if stored_result:
+            import json
+
+            stored_result = job_data.get('result')
+            if stored_result:
+                try:
                     result = json.loads(stored_result)
+                except (ValueError, TypeError):
+                    result = None
+                else:
                     if celery_status == 'PENDING':
                         celery_status = 'SUCCESS'
                         progress = 100.0
-            except Exception:
-                pass
 
         # Status-Mapping
         status_mapping = {
@@ -267,9 +270,13 @@ class JobQueue:
         status = status_mapping.get(celery_status, 'unknown')
 
         # Zeitstempel
-        created_at = datetime.fromisoformat(
-            job_data.get('created_at', datetime.now().isoformat()),
-        )
+        created_at_str = job_data.get('created_at', '')
+        try:
+            created_at = datetime.fromisoformat(created_at_str)
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=UTC)
+        except ValueError:
+            created_at = datetime.now(UTC)
         started_at = None
         completed_at = None
 
@@ -277,7 +284,7 @@ class JobQueue:
             started_at = created_at + timedelta(seconds=5)  # Geschätzt
 
         if celery_status in ['SUCCESS', 'FAILURE']:
-            completed_at = datetime.now()
+            completed_at = datetime.now(UTC)
 
         return JobStatus(
             job_id=job_id,
@@ -343,7 +350,7 @@ class JobQueue:
     def cleanup_old_jobs(self, max_age_hours: int = 24) -> int:
         """Bereinigt alte Jobs."""
 
-        cutoff_time = datetime.now() - timedelta(hours=max_age_hours)
+        cutoff_time = datetime.now(UTC) - timedelta(hours=max_age_hours)
         deleted_count = 0
 
         for key in self.redis_client.scan_iter('job:*'):
@@ -353,6 +360,8 @@ class JobQueue:
                 if created_at_str:
                     try:
                         created_at = datetime.fromisoformat(created_at_str.decode())
+                        if created_at.tzinfo is None:
+                            created_at = created_at.replace(tzinfo=UTC)
                         if created_at < cutoff_time:
                             self.redis_client.delete(key)
                             deleted_count += 1
@@ -373,7 +382,7 @@ class JobQueue:
     def _estimate_completion_time(self, priority: str) -> datetime | None:
         """Schätzt die Fertigstellungszeit."""
         # Einfache Schätzung basierend auf Priorität
-        base_time = datetime.now()
+        base_time = datetime.now(UTC)
 
         if priority == 'high':
             estimated = base_time + timedelta(minutes=5)
@@ -401,6 +410,6 @@ def get_job_queue() -> JobQueue:
         # Versuche echte Queue, falle bei Fehlern zurück
         try:
             job_queue = JobQueue()
-        except Exception:
+        except (ImportError, ConnectionError):
             job_queue = InMemoryJobQueue()
     return job_queue

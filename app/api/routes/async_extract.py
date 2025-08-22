@@ -2,13 +2,12 @@
 API-Routen für asynchrone Datei-Extraktion.
 """
 
-import tempfile
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
-from app.core.config import settings
 from app.core.auth import check_rate_limit, get_current_user
+from app.core.config import settings
 from app.core.exceptions import FileExtractorException, convert_to_http_exception
 from app.core.queue import get_job_queue
 from app.core.validation import validate_file_upload
@@ -39,12 +38,14 @@ async def extract_file_async(
     include_metadata: bool = Form(True, description='Metadaten extrahieren'),
     include_text: bool = Form(True, description='Text extrahieren'),
     include_structure: bool = Form(
-        False, description='Strukturierte Daten extrahieren',
+        False,
+        description='Strukturierte Daten extrahieren',
     ),
     include_images: bool = Form(False, description='Bilder extrahieren'),
     include_media: bool = Form(False, description='Medien extrahieren'),
     callback_url: str | None = Form(
-        None, description='Callback-URL für Benachrichtigungen',
+        None,
+        description='Callback-URL für Benachrichtigungen',
     ),
     priority: str = Form('normal', description='Priorität (low, normal, high)'),
     user: dict = Depends(get_current_user),

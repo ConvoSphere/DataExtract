@@ -18,7 +18,10 @@ class MetricsCollector:
         self.logger = get_logger('metrics')
 
     def record_extraction_start(
-        self, file_path: Path, file_size: int, file_type: str,
+        self,
+        file_path: Path,
+        file_size: int,
+        file_type: str,
     ) -> None:
         """Zeichnet den Start einer Extraktion auf."""
         try:
@@ -43,8 +46,10 @@ class MetricsCollector:
                     file_size=file_size,
                     file_type=file_type,
                 )
-        except Exception as e:
-            self.logger.warning(f'Failed to record extraction start metrics: {e}')
+        except (RuntimeError, ValueError) as e:
+            self.logger.warning(
+                'Failed to record extraction start metrics', error=str(e)
+            )
 
     def record_extraction_success(
         self,
@@ -58,7 +63,8 @@ class MetricsCollector:
             # Extraktions-Counter erhöhen
             if 'extractions_total' in self.metrics:
                 self.metrics['extractions_total'].add(
-                    1, {'file_type': file_path.suffix.lower(), 'status': 'success'},
+                    1,
+                    {'file_type': file_path.suffix.lower(), 'status': 'success'},
                 )
 
             # Extraktionsdauer aufzeichnen
@@ -71,7 +77,8 @@ class MetricsCollector:
             # Dateityp-spezifische Metriken
             if 'file_type_extractions_total' in self.metrics:
                 self.metrics['file_type_extractions_total'].add(
-                    1, {'file_type': file_path.suffix.lower()},
+                    1,
+                    {'file_type': file_path.suffix.lower()},
                 )
 
             # Aktive Jobs verringern
@@ -85,24 +92,32 @@ class MetricsCollector:
                 text_length=text_length,
                 word_count=word_count,
             )
-        except Exception as e:
-            self.logger.warning(f'Failed to record extraction success metrics: {e}')
+        except (RuntimeError, ValueError) as e:
+            self.logger.warning(
+                'Failed to record extraction success metrics', error=str(e)
+            )
 
     def record_extraction_error(
-        self, file_path: Path, duration: float, error_type: str, error_message: str,
+        self,
+        file_path: Path,
+        duration: float,
+        error_type: str,
+        error_message: str,
     ) -> None:
         """Zeichnet einen Extraktionsfehler auf."""
         try:
             # Fehler-Counter erhöhen
             if 'extraction_errors_total' in self.metrics:
                 self.metrics['extraction_errors_total'].add(
-                    1, {'file_type': file_path.suffix.lower(), 'error_type': error_type},
+                    1,
+                    {'file_type': file_path.suffix.lower(), 'error_type': error_type},
                 )
 
             # Extraktionsdauer aufzeichnen (auch bei Fehlern)
             if 'extraction_duration_seconds' in self.metrics:
                 self.metrics['extraction_duration_seconds'].record(
-                    duration, {'file_type': file_path.suffix.lower(), 'status': 'error'},
+                    duration,
+                    {'file_type': file_path.suffix.lower(), 'status': 'error'},
                 )
 
             # Aktive Jobs verringern
@@ -116,11 +131,16 @@ class MetricsCollector:
                 error_type=error_type,
                 error_message=error_message,
             )
-        except Exception as e:
-            self.logger.warning(f'Failed to record extraction error metrics: {e}')
+        except (RuntimeError, ValueError) as e:
+            self.logger.warning(
+                'Failed to record extraction error metrics', error=str(e)
+            )
 
     def record_job_status_change(
-        self, job_id: str, status: str, duration: float | None = None,
+        self,
+        job_id: str,
+        status: str,
+        duration: float | None = None,
     ) -> None:
         """Zeichnet Job-Status-Änderungen auf."""
         try:
@@ -136,8 +156,8 @@ class MetricsCollector:
                     status=status,
                     duration=duration,
                 )
-        except Exception as e:
-            self.logger.warning(f'Failed to record job status change: {e}')
+        except (RuntimeError, ValueError) as e:
+            self.logger.warning('Failed to record job status change', error=str(e))
 
 
 # Global metrics collector instance
@@ -163,29 +183,43 @@ def record_extraction_start(file_path: Path, file_size: int, file_type: str) -> 
 
 
 def record_extraction_success(
-    file_path: Path, duration: float, text_length: int = 0, word_count: int = 0,
+    file_path: Path,
+    duration: float,
+    text_length: int = 0,
+    word_count: int = 0,
 ) -> None:
     """Hilfsfunktion zum Aufzeichnen einer erfolgreichen Extraktion."""
     collector = get_metrics_collector()
     if collector:
         collector.record_extraction_success(
-            file_path, duration, text_length, word_count,
+            file_path,
+            duration,
+            text_length,
+            word_count,
         )
 
 
 def record_extraction_error(
-    file_path: Path, duration: float, error_type: str, error_message: str,
+    file_path: Path,
+    duration: float,
+    error_type: str,
+    error_message: str,
 ) -> None:
     """Hilfsfunktion zum Aufzeichnen eines Extraktionsfehlers."""
     collector = get_metrics_collector()
     if collector:
         collector.record_extraction_error(
-            file_path, duration, error_type, error_message,
+            file_path,
+            duration,
+            error_type,
+            error_message,
         )
 
 
 def record_job_status_change(
-    job_id: str, status: str, duration: float | None = None,
+    job_id: str,
+    status: str,
+    duration: float | None = None,
 ) -> None:
     """Hilfsfunktion zum Aufzeichnen von Job-Status-Änderungen."""
     collector = get_metrics_collector()
@@ -194,10 +228,5 @@ def record_job_status_change(
 
 
 def record_tika_fallback() -> None:
-    """Hilfsfunktion zum Zählen eines Tika-Fallbacks."""
-    try:
-        metrics = setup_custom_metrics() if get_metrics_collector() is None else None
-        # Falls zentraler Collector nicht gesetzt ist, nutzen wir direkte Meter-Nutzung nicht,
-        # hier vereinfachen wir: Zugriff über logger nur informativ.
-    except Exception:
-        pass
+    """Hilfsfunktion zum Zählen eines Tika-Fallbacks (informativ)."""
+    logger.info('Tika fallback used')
