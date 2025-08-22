@@ -38,6 +38,7 @@ def extract_with_docling(
             f'{api_url}/api/v1/extract',
             files=files,
             data=data,
+            timeout=30,
         )
 
     if response.status_code == 200:
@@ -76,6 +77,7 @@ def extract_async_with_docling(
             f'{api_url}/api/v1/extract/async',
             files=files,
             data=data,
+            timeout=30,
         )
 
     if response.status_code == 200:
@@ -98,7 +100,7 @@ def get_job_status(
         Job-Status
     """
 
-    response = requests.get(f'{api_url}/api/v1/jobs/{job_id}')
+    response = requests.get(f'{api_url}/api/v1/jobs/{job_id}', timeout=30)
 
     if response.status_code == 200:
         return response.json()
@@ -214,7 +216,7 @@ def main():
 
     # API-Status prüfen
     try:
-        response = requests.get('http://localhost:8000/api/v1/health')
+        response = requests.get('http://localhost:8000/api/v1/health', timeout=10)
         if response.status_code == 200:
             response.json()
         else:

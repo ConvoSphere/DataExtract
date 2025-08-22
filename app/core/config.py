@@ -2,6 +2,9 @@
 Konfigurationsmanagement für die Universal File Extractor API.
 """
 
+import os
+import tempfile
+
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
@@ -15,7 +18,7 @@ class Settings(BaseSettings):
     debug: bool = Field(default=False, description='Debug-Modus aktivieren')
 
     # Server Konfiguration
-    host: str = Field(default='0.0.0.0', description='Host für den Server')
+    host: str = Field(default='127.0.0.1', description='Host für den Server')
     port: int = Field(default=8000, description='Port für den Server')
 
     # Datei-Konfiguration
@@ -112,7 +115,7 @@ class Settings(BaseSettings):
 
     # Speicher-Konfiguration
     temp_dir: str = Field(
-        default='/tmp/file_extractor',
+        default_factory=lambda: os.path.join(tempfile.gettempdir(), 'file_extractor'),
         description='Temporäres Verzeichnis für Dateiverarbeitung',
     )
     max_temp_files: int = Field(
