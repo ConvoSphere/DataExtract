@@ -5,7 +5,7 @@ Extraktor für einfache Textdateien (TXT, CSV, JSON, XML).
 import csv
 import json
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from defusedxml import ElementTree as ET
@@ -46,14 +46,14 @@ class TextExtractor(BaseExtractor):
             file_size=stat.st_size,
             file_type=self._get_mime_type(file_path),
             file_extension=file_path.suffix.lower(),
-            created_date=datetime.fromtimestamp(stat.st_ctime),
-            modified_date=datetime.fromtimestamp(stat.st_mtime),
+            created_date=datetime.fromtimestamp(stat.st_ctime, tz=UTC),
+            modified_date=datetime.fromtimestamp(stat.st_mtime, tz=UTC),
         )
 
         # Zusätzliche Metadaten basierend auf Dateityp
         if file_path.suffix.lower() == '.json':
             try:
-                with open(file_path, encoding='utf-8') as f:
+                with file_path.open(encoding='utf-8') as f:
                     data = json.load(f)
                     if isinstance(data, dict):
                         metadata.title = data.get('title') or data.get('name')
@@ -61,7 +61,7 @@ class TextExtractor(BaseExtractor):
                         metadata.subject = data.get('subject') or data.get(
                             'description',
                         )
-            except Exception:
+            except (OSError, ValueError, TypeError):
                 pass
 
         return metadata
@@ -69,14 +69,14 @@ class TextExtractor(BaseExtractor):
     def extract_text(self, file_path: Path) -> ExtractedText:
         """Extrahiert Text aus der Datei."""
         try:
-            with open(file_path, encoding='utf-8') as f:
+            with file_path.open(encoding='utf-8') as f:
                 content = f.read()
         except UnicodeDecodeError:
             # Fallback für andere Encodings
             try:
-                with open(file_path, encoding='latin-1') as f:
+                with file_path.open(encoding='latin-1') as f:
                     content = f.read()
-            except Exception:
+            except (OSError, ValueError):
                 content = ''
 
         # Text bereinigen
@@ -130,7 +130,7 @@ class TextExtractor(BaseExtractor):
         tables = []
 
         try:
-            with open(file_path, encoding='utf-8') as f:
+            with file_path.open(encoding='utf-8') as f:
                 reader = csv.reader(f)
                 headers = next(reader, [])
 
@@ -142,7 +142,7 @@ class TextExtractor(BaseExtractor):
                         'column_count': len(headers),
                     }
                     tables.append(table_data)
-        except Exception:
+        except (OSError, ValueError, TypeError):
             pass
 
         return StructuredData(tables=tables)
@@ -150,7 +150,7 @@ class TextExtractor(BaseExtractor):
     def _extract_json_structure(self, file_path: Path) -> StructuredData:
         """Extrahiert Struktur aus JSON-Dateien."""
         try:
-            with open(file_path, encoding='utf-8') as f:
+            with file_path.open(encoding='utf-8') as f:
                 data = json.load(f)
 
             # Einfache Struktur-Analyse
@@ -163,7 +163,7 @@ class TextExtractor(BaseExtractor):
             return StructuredData(
                 tables=[{'structure': structure_info}],
             )
-        except Exception:
+        except (OSError, ValueError, TypeError):
             return StructuredData()
 
     def _extract_xml_structure(self, file_path: Path) -> StructuredData:
@@ -194,5 +194,5 @@ class TextExtractor(BaseExtractor):
                 links=links,
                 headings=headings,
             )
-        except Exception:
+        except (OSError, ValueError, TypeError):
             return StructuredData()

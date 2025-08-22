@@ -2,7 +2,7 @@
 Docling-basierter Extraktor für erweiterte Datenextraktion.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -49,16 +49,35 @@ try:
             def enrich(self, doc):
                 return doc
 
-        EntityEnrichment = lambda: MockEnrichment('EntityEnrichment')
-        ImageEnrichment = lambda: MockEnrichment('ImageEnrichment')
-        LanguageEnrichment = lambda: MockEnrichment('LanguageEnrichment')
-        LinkEnrichment = lambda: MockEnrichment('LinkEnrichment')
-        MetadataEnrichment = lambda: MockEnrichment('MetadataEnrichment')
-        SentimentEnrichment = lambda: MockEnrichment('SentimentEnrichment')
-        StructureEnrichment = lambda: MockEnrichment('StructureEnrichment')
-        SummaryEnrichment = lambda: MockEnrichment('SummaryEnrichment')
-        TableEnrichment = lambda: MockEnrichment('TableEnrichment')
-        TextEnrichment = lambda: MockEnrichment('TextEnrichment')
+        def EntityEnrichment():
+            return MockEnrichment('EntityEnrichment')
+
+        def ImageEnrichment():
+            return MockEnrichment('ImageEnrichment')
+
+        def LanguageEnrichment():
+            return MockEnrichment('LanguageEnrichment')
+
+        def LinkEnrichment():
+            return MockEnrichment('LinkEnrichment')
+
+        def MetadataEnrichment():
+            return MockEnrichment('MetadataEnrichment')
+
+        def SentimentEnrichment():
+            return MockEnrichment('SentimentEnrichment')
+
+        def StructureEnrichment():
+            return MockEnrichment('StructureEnrichment')
+
+        def SummaryEnrichment():
+            return MockEnrichment('SummaryEnrichment')
+
+        def TableEnrichment():
+            return MockEnrichment('TableEnrichment')
+
+        def TextEnrichment():
+            return MockEnrichment('TextEnrichment')
 
     DOCLING_AVAILABLE = True
 except ImportError:
@@ -170,8 +189,8 @@ class DoclingExtractor(BaseExtractor):
             file_size=stat.st_size,
             file_type=self._get_mime_type(file_path),
             file_extension=file_path.suffix.lower(),
-            created_date=datetime.fromtimestamp(stat.st_ctime),
-            modified_date=datetime.fromtimestamp(stat.st_mtime),
+            created_date=datetime.fromtimestamp(stat.st_ctime, tz=UTC),
+            modified_date=datetime.fromtimestamp(stat.st_mtime, tz=UTC),
         )
 
         try:
@@ -213,7 +232,7 @@ class DoclingExtractor(BaseExtractor):
                 if 'duration' in doc_metadata:
                     metadata.duration = float(doc_metadata['duration'])
 
-        except Exception:
+        except (ValueError, AttributeError, TypeError):
             # Fallback zu Basis-Metadaten
             pass
 
@@ -255,7 +274,7 @@ class DoclingExtractor(BaseExtractor):
             if hasattr(enriched_doc, 'confidence'):
                 confidence = float(enriched_doc.confidence)
 
-        except Exception:
+        except (ValueError, AttributeError, TypeError):
             pass
 
         # Statistiken berechnen
@@ -344,7 +363,7 @@ class DoclingExtractor(BaseExtractor):
                     if isinstance(list_data, list):
                         lists.append([str(item) for item in list_data])
 
-        except Exception:
+        except (ValueError, AttributeError, TypeError):
             pass
 
         return StructuredData(
@@ -374,7 +393,7 @@ class DoclingExtractor(BaseExtractor):
                 for entity_type, entity_list in entity_doc.entities.items():
                     entities[entity_type] = [str(entity) for entity in entity_list]
 
-        except Exception:
+        except (ValueError, AttributeError, TypeError):
             pass
 
         return entities
@@ -403,7 +422,7 @@ class DoclingExtractor(BaseExtractor):
                     'negative_phrases': sentiment.get('negative', []),
                 }
 
-        except Exception:
+        except (ValueError, AttributeError, TypeError):
             pass
 
         return sentiment_data
@@ -426,7 +445,7 @@ class DoclingExtractor(BaseExtractor):
             if hasattr(summary_doc, 'summary'):
                 summary = str(summary_doc.summary)
 
-        except Exception:
+        except (ValueError, AttributeError, TypeError):
             pass
 
         return summary

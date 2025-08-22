@@ -2,7 +2,7 @@
 Extraktor für Bilddateien mit OCR-Funktionalität.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from PIL import Image
@@ -66,8 +66,8 @@ class ImageExtractor(BaseExtractor):
             file_size=stat.st_size,
             file_type=self._get_mime_type(file_path),
             file_extension=file_path.suffix.lower(),
-            created_date=datetime.fromtimestamp(stat.st_ctime),
-            modified_date=datetime.fromtimestamp(stat.st_mtime),
+            created_date=datetime.fromtimestamp(stat.st_ctime, tz=UTC),
+            modified_date=datetime.fromtimestamp(stat.st_mtime, tz=UTC),
         )
 
         try:
@@ -87,8 +87,8 @@ class ImageExtractor(BaseExtractor):
                 metadata.color_space = img.mode
 
                 # EXIF-Daten (falls verfügbar)
-                if hasattr(img, '_getexif') and img._getexif():
-                    exif = img._getexif()
+                if hasattr(img, 'getexif'):
+                    exif = img.getexif()
                     if exif:
                         # EXIF-Tags für Metadaten
                         exif_tags = {
@@ -103,7 +103,7 @@ class ImageExtractor(BaseExtractor):
                                 if hasattr(metadata, field_name):
                                     setattr(metadata, field_name, str(value))
 
-        except Exception:
+        except (OSError, ValueError, AttributeError):
             pass
 
         return metadata
@@ -160,7 +160,7 @@ class ImageExtractor(BaseExtractor):
                     except Exception:
                         pass
 
-        except Exception:
+        except (OSError, ValueError):
             pass
 
         # Statistiken berechnen
@@ -185,7 +185,7 @@ class ImageExtractor(BaseExtractor):
                 image_info = self._extract_image_info(img, file_path)
                 images.append(image_info)
 
-        except Exception:
+        except (OSError, ValueError, AttributeError):
             pass
 
         return StructuredData(images=images)
@@ -268,7 +268,7 @@ class ImageExtractor(BaseExtractor):
         # Farbpalette extrahieren
         try:
             image_info.color_palette = self._extract_color_palette(img)
-        except Exception:
+        except (ValueError, AttributeError):
             pass
 
         return image_info
@@ -297,5 +297,5 @@ class ImageExtractor(BaseExtractor):
 
             return colors[:num_colors]
 
-        except Exception:
+        except (ValueError, AttributeError):
             return []

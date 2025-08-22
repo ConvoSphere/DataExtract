@@ -53,7 +53,7 @@ class TikaExtractor(BaseExtractor):
             with httpx.Client(timeout=timeout) as client:
                 resp = client.get(url)
                 return resp.status_code == 200
-        except Exception:
+        except httpx.RequestError:
             return False
 
     def extract_metadata(self, file_path: Path) -> FileMetadata:
@@ -75,7 +75,7 @@ class TikaExtractor(BaseExtractor):
             while True:
                 try:
                     headers = {'Accept': 'application/json'}
-                    with open(file_path, 'rb') as f:
+                    with file_path.open('rb') as f:
                         resp = self._client.put('/meta', headers=headers, content=f)
                     resp.raise_for_status()
                     data = resp.json()
@@ -102,16 +102,16 @@ class TikaExtractor(BaseExtractor):
                     if page_count is not None:
                         try:
                             metadata.page_count = int(page_count)
-                        except Exception:
+                        except ValueError:
                             pass
                     break
-                except Exception as e:
+                except (httpx.HTTPError, ValueError) as err:
                     attempt += 1
                     if attempt > settings.tika_max_retries:
                         self.logger.warning(
                             'Tika metadata extraction failed',
                             filename=file_path.name,
-                            error=str(e),
+                            error=str(err),
                         )
                         break
                     time.sleep(backoff)
@@ -139,17 +139,19 @@ class TikaExtractor(BaseExtractor):
                                 ),
                             },
                         )
-                    with open(file_path, 'rb') as f:
+                    with file_path.open('rb') as f:
                         resp = self._client.put('/tika', headers=headers, content=f)
                     resp.raise_for_status()
                     content = resp.text or ''
                     if settings.tika_use_ocr:
                         ocr_used = True
                     break
-                except Exception as e:
+                except httpx.HTTPError as err:
                     attempt += 1
                     if attempt > settings.tika_max_retries:
-                        raise Exception(f'Tika-Text-Extraktion fehlgeschlagen: {e!s}')
+                        raise RuntimeError(
+                            'Tika-Text-Extraktion fehlgeschlagen'
+                        ) from err
                     time.sleep(backoff)
                     backoff *= 2
 
@@ -172,7 +174,7 @@ class TikaExtractor(BaseExtractor):
             import magic  # type: ignore
 
             return magic.from_file(str(file_path), mime=True)
-        except Exception:
+        except (FileNotFoundError, OSError, AttributeError):
             return 'application/octet-stream'
 
 
