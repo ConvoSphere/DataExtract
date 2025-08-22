@@ -46,8 +46,10 @@ class MetricsCollector:
                     file_size=file_size,
                     file_type=file_type,
                 )
-        except Exception as e:
-            self.logger.warning(f'Failed to record extraction start metrics: {e}')
+        except (RuntimeError, ValueError) as e:
+            self.logger.warning(
+                'Failed to record extraction start metrics', error=str(e)
+            )
 
     def record_extraction_success(
         self,
@@ -90,8 +92,10 @@ class MetricsCollector:
                 text_length=text_length,
                 word_count=word_count,
             )
-        except Exception as e:
-            self.logger.warning(f'Failed to record extraction success metrics: {e}')
+        except (RuntimeError, ValueError) as e:
+            self.logger.warning(
+                'Failed to record extraction success metrics', error=str(e)
+            )
 
     def record_extraction_error(
         self,
@@ -127,8 +131,10 @@ class MetricsCollector:
                 error_type=error_type,
                 error_message=error_message,
             )
-        except Exception as e:
-            self.logger.warning(f'Failed to record extraction error metrics: {e}')
+        except (RuntimeError, ValueError) as e:
+            self.logger.warning(
+                'Failed to record extraction error metrics', error=str(e)
+            )
 
     def record_job_status_change(
         self,
@@ -150,8 +156,8 @@ class MetricsCollector:
                     status=status,
                     duration=duration,
                 )
-        except Exception as e:
-            self.logger.warning(f'Failed to record job status change: {e}')
+        except (RuntimeError, ValueError) as e:
+            self.logger.warning('Failed to record job status change', error=str(e))
 
 
 # Global metrics collector instance
@@ -222,10 +228,5 @@ def record_job_status_change(
 
 
 def record_tika_fallback() -> None:
-    """Hilfsfunktion zum Zählen eines Tika-Fallbacks."""
-    try:
-        metrics = setup_custom_metrics() if get_metrics_collector() is None else None
-        # Falls zentraler Collector nicht gesetzt ist, nutzen wir direkte Meter-Nutzung nicht,
-        # hier vereinfachen wir: Zugriff über logger nur informativ.
-    except Exception:
-        pass
+    """Hilfsfunktion zum Zählen eines Tika-Fallbacks (informativ)."""
+    logger.info('Tika fallback used')

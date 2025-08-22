@@ -4,7 +4,7 @@ Strukturiertes Logging und OpenTelemetry-Konfiguration für Microservice.
 
 import logging
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 import structlog
@@ -63,7 +63,7 @@ def setup_opentelemetry() -> None:
         {
             'service.name': settings.app_name,
             'service.version': settings.app_version,
-            'service.instance.id': f'{settings.app_name}-{datetime.now().isoformat()}',
+            'service.instance.id': f'{settings.app_name}-{datetime.now(UTC).isoformat()}',
             'deployment.environment': settings.environment,
             'service.namespace': 'file-extractor',
         },
@@ -84,11 +84,8 @@ def setup_opentelemetry() -> None:
             tracer_provider.add_span_processor(BatchSpanProcessor(otlp_trace_exporter))
 
     # Tracer Provider setzen (nur falls noch nicht gesetzt)
-    try:
-        # Avoid overriding an existing provider (pytest may import app multiple times)
-        if trace.get_tracer_provider().__class__.__name__ == 'DefaultTracerProvider':
-            trace.set_tracer_provider(tracer_provider)
-    except Exception:
+    # Avoid overriding an existing provider (pytest may import app multiple times)
+    if trace.get_tracer_provider().__class__.__name__ == 'DefaultTracerProvider':
         trace.set_tracer_provider(tracer_provider)
 
     # Meter Provider konfigurieren
@@ -115,15 +112,15 @@ def setup_opentelemetry() -> None:
     # Idempotent instrumentations
     try:
         LoggingInstrumentor().instrument()
-    except Exception:
+    except (RuntimeError, AttributeError):
         pass
     try:
         RequestsInstrumentor().instrument()
-    except Exception:
+    except (RuntimeError, AttributeError):
         pass
     try:
         RedisInstrumentor().instrument()
-    except Exception:
+    except (RuntimeError, AttributeError):
         pass
 
 
@@ -132,12 +129,12 @@ def get_logger(name: str) -> structlog.stdlib.BoundLogger:
     return structlog.get_logger(name)
 
 
-def get_tracer(name: str = None) -> trace.Tracer:
+def get_tracer(name: str | None = None) -> trace.Tracer:
     """Gibt einen OpenTelemetry Tracer zurück."""
     return trace.get_tracer(name or __name__)
 
 
-def get_meter(name: str = None) -> metrics.Meter:
+def get_meter(name: str | None = None) -> metrics.Meter:
     """Gibt einen OpenTelemetry Meter zurück."""
     return metrics.get_meter(name or __name__)
 

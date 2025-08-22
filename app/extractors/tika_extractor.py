@@ -5,7 +5,7 @@ Apache Tika-basierter Extraktor als letzter Fallback.
 from __future__ import annotations
 
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -63,8 +63,8 @@ class TikaExtractor(BaseExtractor):
             file_size=stat.st_size,
             file_type=self._guess_mime(file_path),
             file_extension=file_path.suffix.lower(),
-            created_date=datetime.fromtimestamp(stat.st_ctime),
-            modified_date=datetime.fromtimestamp(stat.st_mtime),
+            created_date=datetime.fromtimestamp(stat.st_ctime, tz=UTC),
+            modified_date=datetime.fromtimestamp(stat.st_mtime, tz=UTC),
         )
 
         with self._tracer.start_as_current_span('tika.extract_metadata') as span:

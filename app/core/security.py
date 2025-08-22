@@ -69,7 +69,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             content_type = request.headers.get('content-type', '')
             if not content_type.startswith('multipart/form-data'):
                 logger.warning(
-                    'Invalid content-type for upload', content_type=content_type
+                    'Invalid content-type for upload',
+                    content_type=content_type,
                 )
                 # Do not reject here; let route validation handle it
                 return True

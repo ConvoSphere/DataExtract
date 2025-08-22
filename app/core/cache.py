@@ -45,7 +45,7 @@ class CacheManager:
                 self.redis_client.ping()
                 logger.info('Redis cache initialized successfully')
             except Exception as e:
-                logger.warning(f'Redis cache initialization failed: {e}')
+                logger.warning('Redis cache initialization failed', error=str(e))
                 self.redis_client = None
 
     def _generate_key(self, prefix: str, identifier: str) -> str:
@@ -93,8 +93,8 @@ class CacheManager:
             logger.debug(f'Cache miss: {key}')
             return None
 
-        except Exception as e:
-            logger.error(f'Cache get error: {e}')
+        except (OSError, ValueError, TypeError) as e:
+            logger.error('Cache get error', error=str(e))
             return None
 
     def set(self, key: str, value: Any, ttl: int = 3600) -> bool:
@@ -132,8 +132,8 @@ class CacheManager:
             logger.debug(f'Cache set (Memory): {key}, TTL: {ttl}s')
             return True
 
-        except Exception as e:
-            logger.error(f'Cache set error: {e}')
+        except (OSError, ValueError, TypeError) as e:
+            logger.error('Cache set error', error=str(e))
             return False
 
     def delete(self, key: str) -> bool:
@@ -159,8 +159,8 @@ class CacheManager:
             logger.debug(f'Cache delete: {key}')
             return True
 
-        except Exception as e:
-            logger.error(f'Cache delete error: {e}')
+        except (OSError, ValueError, TypeError) as e:
+            logger.error('Cache delete error', error=str(e))
             return False
 
     def clear(self) -> bool:
@@ -181,8 +181,8 @@ class CacheManager:
             logger.info('Cache cleared')
             return True
 
-        except Exception as e:
-            logger.error(f'Cache clear error: {e}')
+        except (OSError, ValueError, TypeError) as e:
+            logger.error('Cache clear error', error=str(e))
             return False
 
     def get_stats(self) -> dict[str, Any]:
@@ -228,8 +228,8 @@ class CacheManager:
 
             return self.set(cache_key, result, ttl)
 
-        except Exception as e:
-            logger.error(f'Cache extraction result error: {e}')
+        except (OSError, ValueError, TypeError) as e:
+            logger.error('Cache extraction result error', error=str(e))
             return False
 
     def get_cached_extraction(self, file_path: Path) -> dict[str, Any] | None:
@@ -252,8 +252,8 @@ class CacheManager:
 
             return self.get(cache_key)
 
-        except Exception as e:
-            logger.error(f'Get cached extraction error: {e}')
+        except (OSError, ValueError, TypeError) as e:
+            logger.error('Get cached extraction error', error=str(e))
             return None
 
     def invalidate_file_cache(self, file_path: Path) -> bool:
@@ -272,8 +272,8 @@ class CacheManager:
 
             return self.delete(cache_key)
 
-        except Exception as e:
-            logger.error(f'Invalidate file cache error: {e}')
+        except (OSError, ValueError, TypeError) as e:
+            logger.error('Invalidate file cache error', error=str(e))
             return False
 
 

@@ -2,8 +2,8 @@
 Konfigurationsmanagement für die Universal File Extractor API.
 """
 
-import os
 import tempfile
+from pathlib import Path
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
@@ -115,7 +115,7 @@ class Settings(BaseSettings):
 
     # Speicher-Konfiguration
     temp_dir: str = Field(
-        default_factory=lambda: os.path.join(tempfile.gettempdir(), 'file_extractor'),
+        default_factory=lambda: str(Path(tempfile.gettempdir()) / 'file_extractor'),
         description='Temporäres Verzeichnis für Dateiverarbeitung',
     )
     max_temp_files: int = Field(

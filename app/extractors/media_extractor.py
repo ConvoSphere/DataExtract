@@ -6,8 +6,8 @@ import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
-# Defer heavy media imports to runtime to reduce idle memory usage
 MEDIA_AVAILABLE = True
+# Defer heavy media imports to runtime to reduce idle memory usage
 
 from app.core.config import settings
 from app.extractors.base import BaseExtractor

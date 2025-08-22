@@ -281,7 +281,8 @@ class FileValidator:
             for suspicious in suspicious_names:
                 if suspicious in filename_lower:
                     logger.warning(
-                        'Suspicious filename detected', filename=filename_lower
+                        'Suspicious filename detected',
+                        filename=filename_lower,
                     )
                     return False
 
@@ -309,7 +310,9 @@ class FileValidator:
             Path(temp_path).unlink()
         except OSError as e:
             logger.warning(
-                'Failed to cleanup temp file', temp_path=temp_path, error=str(e)
+                'Failed to cleanup temp file',
+                temp_path=temp_path,
+                error=str(e),
             )
 
 
