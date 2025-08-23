@@ -40,7 +40,7 @@ class APIKeyAuth:
                         'rate_limit': int(rate_limit),
                     }
                 except (ValueError, IndexError):
-                    logger.warning(f'Invalid API key format for {key}')
+                    logger.warning('Invalid API key format', env_key=key)
                     continue
 
         # Fallback für Development (nur wenn keine Keys konfiguriert sind)
@@ -55,7 +55,7 @@ class APIKeyAuth:
             }
 
         # Logging (ohne sensitive Daten)
-        logger.info(f'Loaded {len(api_keys)} API keys')
+        logger.info('Loaded API keys', count=len(api_keys))
 
         return api_keys
 
@@ -65,10 +65,10 @@ class APIKeyAuth:
             return None
 
         if api_key in self.api_keys:
-            logger.info(f'API key validated for user: {self.api_keys[api_key]["name"]}')
+            logger.info('API key validated', user=self.api_keys[api_key]['name'])
             return self.api_keys[api_key]
 
-        logger.warning(f'Invalid API key attempted: {api_key[:8]}...')
+        logger.warning('Invalid API key attempted', prefix=api_key[:8])
         return None
 
     def has_permission(self, api_key: str, permission: str) -> bool:
@@ -125,14 +125,14 @@ async def get_current_user(
     user_info = auth.validate_api_key(api_key)
 
     if not user_info:
-        logger.warning(f'Invalid API key: {api_key[:8]}...')
+        logger.warning('Invalid API key', prefix=api_key[:8])
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail='Invalid API key',
             headers={'WWW-Authenticate': 'Bearer'},
         )
 
-    logger.info(f'API key validated for user: {user_info["name"]}')
+    logger.info('API key validated', user=user_info['name'])
     return user_info
 
 
@@ -149,9 +149,7 @@ async def require_permission(permission: str):
 
     async def _require_permission(user: dict = Depends(get_current_user)) -> dict:
         if permission not in user.get('permissions', []):
-            logger.warning(
-                f'Permission denied: {user["name"]} lacks {permission} permission',
-            )
+            logger.warning('Permission denied', user=user['name'], permission=permission)
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f'Insufficient permissions. Required: {permission}',
@@ -179,7 +177,8 @@ class RateLimiter:
                 logger.info('RateLimiter: Redis backend enabled')
             except Exception as e:
                 logger.warning(
-                    f'RateLimiter: Redis not reachable, falling back to in-memory: {e}',
+                    'RateLimiter: Redis not reachable, falling back to in-memory',
+                    error=str(e),
                 )
                 self.redis_client = None
         except ImportError:
@@ -216,14 +215,14 @@ class RateLimiter:
 
             current_count = int(current)
             if current_count >= rate_limit:
-                logger.warning(f'Rate limit exceeded for user: {user_info["name"]}')
+                logger.warning('Rate limit exceeded', user=user_info['name'])
                 return False
 
             # Increment Counter
             self.redis_client.incr(key)
             return True
         except Exception as e:
-            logger.warning(f'RateLimiter: error using Redis, allowing request: {e}')
+            logger.warning('RateLimiter: error using Redis, allowing request', error=str(e))
             return True
 
 

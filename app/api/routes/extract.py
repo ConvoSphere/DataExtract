@@ -139,7 +139,8 @@ async def extract_file(
                     if text_len < 20:
                         from app.extractors.tika_extractor import TikaExtractor
 
-                        # Vermeide teure/fehlerhafte Fallbacks wenn Tika nicht verfügbar ist
+                        # Vermeide teure/fehlerhafte Fallbacks
+                        # wenn Tika nicht verfügbar ist
                         if not TikaExtractor.is_available():
                             raise RuntimeError(
                                 'Tika server not available, skipping fallback',

@@ -3,7 +3,7 @@ Health-Check Routen für die API.
 """
 
 import time
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 from fastapi import APIRouter
 
@@ -41,7 +41,7 @@ async def health_check() -> HealthResponse:
         return HealthResponse(
             status='healthy',
             version=settings.app_version,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             uptime=uptime,
             supported_formats_count=total_formats,
         )
@@ -49,7 +49,7 @@ async def health_check() -> HealthResponse:
         return HealthResponse(
             status='unhealthy',
             version=settings.app_version,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             uptime=time.time() - _start_time,
             supported_formats_count=0,
         )
@@ -106,7 +106,7 @@ async def detailed_health_check():
         return {
             'status': 'error',
             'error': str(e),
-            'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+            'timestamp': datetime.now(UTC).isoformat().replace('+00:00', 'Z'),
         }
 
 
@@ -148,5 +148,5 @@ async def liveness_check():
     """
     return {
         'status': 'alive',
-        'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+        'timestamp': datetime.now(UTC).isoformat().replace('+00:00', 'Z'),
     }
