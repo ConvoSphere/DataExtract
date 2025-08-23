@@ -44,7 +44,7 @@ class CacheManager:
                 # Test-Verbindung
                 self.redis_client.ping()
                 logger.info('Redis cache initialized successfully')
-            except Exception as e:
+            except (redis.exceptions.RedisError, ConnectionError) as e:
                 logger.warning('Redis cache initialization failed', error=str(e))
                 self.redis_client = None
 

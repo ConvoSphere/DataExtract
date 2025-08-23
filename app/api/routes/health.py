@@ -3,7 +3,7 @@ Health-Check Routen für die API.
 """
 
 import time
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 from fastapi import APIRouter
 

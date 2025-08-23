@@ -7,8 +7,6 @@ from pathlib import Path
 from typing import Any
 
 try:
-    import docling
-
     # Check if Pipeline is available
     try:
         from docling import Document, Pipeline
@@ -49,34 +47,34 @@ try:
             def enrich(self, doc):
                 return doc
 
-        def EntityEnrichment():
+        def entity_enrichment():
             return MockEnrichment('EntityEnrichment')
 
-        def ImageEnrichment():
+        def image_enrichment():
             return MockEnrichment('ImageEnrichment')
 
-        def LanguageEnrichment():
+        def language_enrichment():
             return MockEnrichment('LanguageEnrichment')
 
-        def LinkEnrichment():
+        def link_enrichment():
             return MockEnrichment('LinkEnrichment')
 
-        def MetadataEnrichment():
+        def metadata_enrichment():
             return MockEnrichment('MetadataEnrichment')
 
-        def SentimentEnrichment():
+        def sentiment_enrichment():
             return MockEnrichment('SentimentEnrichment')
 
-        def StructureEnrichment():
+        def structure_enrichment():
             return MockEnrichment('StructureEnrichment')
 
-        def SummaryEnrichment():
+        def summary_enrichment():
             return MockEnrichment('SummaryEnrichment')
 
-        def TableEnrichment():
+        def table_enrichment():
             return MockEnrichment('TableEnrichment')
 
-        def TextEnrichment():
+        def text_enrichment():
             return MockEnrichment('TextEnrichment')
 
     DOCLING_AVAILABLE = True

@@ -10,6 +10,15 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.core.config import settings
 from app.core.logging import get_logger
 
+# Safe RedisError alias (works even if redis is not installed)
+try:
+    import redis as _redis  # type: ignore
+
+    RedisError = _redis.exceptions.RedisError
+except Exception:  # pragma: no cover - fallback if redis missing
+    class RedisError(Exception):
+        pass
+
 logger = get_logger('auth')
 
 # Security scheme für API-Key
@@ -175,7 +184,7 @@ class RateLimiter:
                 client.ping()
                 self.redis_client = client
                 logger.info('RateLimiter: Redis backend enabled')
-            except Exception as e:
+            except (RedisError, ConnectionError) as e:
                 logger.warning(
                     'RateLimiter: Redis not reachable, falling back to in-memory',
                     error=str(e),
@@ -221,7 +230,7 @@ class RateLimiter:
             # Increment Counter
             self.redis_client.incr(key)
             return True
-        except Exception as e:
+        except (RedisError, ConnectionError, ValueError) as e:
             logger.warning('RateLimiter: error using Redis, allowing request', error=str(e))
             return True
 
