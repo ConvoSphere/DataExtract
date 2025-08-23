@@ -152,7 +152,7 @@ class BaseExtractor(ABC):
             if include_metadata:
                 try:
                     file_metadata = self.extract_metadata(file_path)
-                except Exception as e:
+                except (OSError, ValueError, AttributeError, TypeError) as e:
                     errors.append(f'Metadaten-Extraktion fehlgeschlagen: {e!s}')
                     self.logger.warning(
                         'Metadata extraction failed',
@@ -167,7 +167,7 @@ class BaseExtractor(ABC):
             if include_text:
                 try:
                     extracted_text = self.extract_text(file_path)
-                except Exception as e:
+                except (OSError, ValueError, AttributeError, TypeError) as e:
                     errors.append(f'Text-Extraktion fehlgeschlagen: {e!s}')
                     self.logger.warning(
                         'Text extraction failed',
@@ -180,7 +180,7 @@ class BaseExtractor(ABC):
             if include_structure:
                 try:
                     structured_data = self.extract_structured_data(file_path)
-                except Exception as e:
+                except (OSError, ValueError, AttributeError, TypeError) as e:
                     errors.append(f'Struktur-Extraktion fehlgeschlagen: {e!s}')
                     self.logger.warning(
                         'Structure extraction failed',
@@ -227,7 +227,7 @@ class BaseExtractor(ABC):
                 errors=errors,
             )
 
-        except Exception as e:
+        except (OSError, ValueError, AttributeError, TypeError) as e:
             extraction_time = time.time() - start_time
             errors.append(f'Allgemeiner Extraktionsfehler: {e!s}')
 
@@ -247,6 +247,9 @@ class BaseExtractor(ABC):
                 warnings=warnings,
                 errors=errors,
             )
+        except Exception as e:
+            # Re-raise unexpected exceptions to surface programming errors
+            raise
 
     def _create_fallback_metadata(self, file_path: Path) -> FileMetadata:
         """Erstellt Fallback-Metadaten für eine Datei."""
@@ -254,7 +257,7 @@ class BaseExtractor(ABC):
 
         try:
             mime_type = magic.from_file(str(file_path), mime=True)
-        except Exception:
+        except (OSError, ValueError, AttributeError, TypeError):
             mime_type = 'application/octet-stream'
 
         return FileMetadata(
