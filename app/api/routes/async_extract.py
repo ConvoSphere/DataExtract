@@ -100,13 +100,13 @@ async def extract_file_async(
         raise
     except FileExtractorException as e:
         Path(file_info.get('temp_path', '')).unlink(missing_ok=True)
-        raise convert_to_http_exception(e)
+        raise convert_to_http_exception(e) from e
     except Exception as e:
         Path(file_info.get('temp_path', '')).unlink(missing_ok=True)
         raise HTTPException(
             status_code=500,
             detail=f'Unerwarteter Fehler: {e!s}',
-        )
+        ) from e
 
 
 @router.get(
@@ -147,7 +147,7 @@ async def get_job_status(job_id: str) -> JobStatus:
         raise HTTPException(
             status_code=500,
             detail=f'Fehler beim Abrufen des Job-Status: {e!s}',
-        )
+        ) from e
 
 
 @router.delete(
@@ -183,7 +183,7 @@ async def cancel_job(job_id: str):
         raise HTTPException(
             status_code=500,
             detail=f'Fehler beim Abbrechen des Jobs: {e!s}',
-        )
+        ) from e
 
 
 @router.get(
@@ -215,7 +215,7 @@ async def get_job_stats():
         raise HTTPException(
             status_code=500,
             detail=f'Fehler beim Abrufen der Job-Statistiken: {e!s}',
-        )
+        ) from e
 
 
 @router.post(
@@ -247,4 +247,4 @@ async def cleanup_old_jobs(max_age_hours: int = 24):
         raise HTTPException(
             status_code=500,
             detail=f'Fehler bei der Job-Bereinigung: {e!s}',
-        )
+        ) from e

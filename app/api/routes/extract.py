@@ -51,7 +51,7 @@ async def extract_file(
         False,
         description='Strukturierte Daten extrahieren',
     ),
-    language: str | None = Form(
+    _language: str | None = Form(
         None,
         description='Sprache für die Extraktion (ISO 639-1)',
     ),
@@ -229,7 +229,7 @@ async def extract_file(
             error_type='FileExtractorException',
             error_message=str(e),
         )
-        raise convert_to_http_exception(e)
+        raise convert_to_http_exception(e) from e
     except Exception as e:
         # Metrics für Extraktionsfehler
         duration = time.time() - start_time
@@ -242,7 +242,7 @@ async def extract_file(
         raise HTTPException(
             status_code=500,
             detail=f'Unerwarteter Fehler: {e!s}',
-        )
+        ) from e
 
 
 @router.get(
@@ -286,7 +286,7 @@ async def get_supported_formats():
         raise HTTPException(
             status_code=500,
             detail=f'Fehler beim Abrufen der Formate: {e!s}',
-        )
+        ) from e
 
 
 @router.post(
