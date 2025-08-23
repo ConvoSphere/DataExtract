@@ -62,7 +62,7 @@ class TestMicroservicePerformance:
         # Mehrere Requests um Metriken zu generieren
         start_time = time.time()
 
-        for i in range(5):
+        for _i in range(5):
             response = await client.get('/health')
             assert response.status_code == 200
 
@@ -121,7 +121,7 @@ class TestMicroservicePerformance:
         start_time = time.time()
 
         # Mehrere Requests um Logs zu generieren
-        for i in range(10):
+        for _i in range(10):
             response = await client.get('/health')
             assert response.status_code == 200
 

@@ -11,11 +11,14 @@ import shutil
 import subprocess
 import tempfile
 import time
-from collections.abc import Generator, Iterator
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import httpx
 import pytest
+
+if TYPE_CHECKING:
+    from collections.abc import Generator, Iterator
 
 API_BASE = 'http://localhost:8000/api/v1'
 COMPOSE_FILE = 'docker-compose.test.yml'
@@ -30,14 +33,14 @@ def _docker_compose_base_cmd() -> list[str] | None:
     if shutil.which('docker') is not None:
         # Teste ob "docker compose" verfügbar ist
         try:
-            result = subprocess.run(
+            subprocess.run(
                 ['docker', 'compose', 'version'],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 check=True,
             )
             return ['docker', 'compose']
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
     if shutil.which('docker-compose') is not None:
         return ['docker-compose']
@@ -52,7 +55,7 @@ def _compose_up() -> Iterator[None]:
         pytest.skip('Docker/Compose nicht verfügbar – E2E-Tests werden übersprungen')
 
     # Build + Up (non-interaktiv)
-    cmd_up = base + ['-f', COMPOSE_FILE, 'up', '-d', '--build']
+    cmd_up = [*base, '-f', COMPOSE_FILE, 'up', '-d', '--build']
     subprocess.run(cmd_up, check=True)
 
     # Warten bis API healthy ist
@@ -67,7 +70,7 @@ def _compose_up() -> Iterator[None]:
             }:
                 break
             last_err = f'status={resp.status_code} body={resp.text!r}'
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             last_err = str(e)
         time.sleep(2)
     else:
@@ -76,7 +79,7 @@ def _compose_up() -> Iterator[None]:
     yield
 
     # Down + prune volumes of this stack
-    cmd_down = base + ['-f', COMPOSE_FILE, 'down', '-v', '--remove-orphans']
+    cmd_down = [*base, '-f', COMPOSE_FILE, 'down', '-v', '--remove-orphans']
     subprocess.run(cmd_down, check=False)
 
 
@@ -157,7 +160,7 @@ class TestE2EExtract:
         http_client: httpx.Client,
         sample_text_file: Path,
     ) -> None:
-        with open(sample_text_file, 'rb') as f:
+        with sample_text_file.open('rb') as f:
             files = {'file': ('test.txt', f, 'text/plain')}
             data = {
                 'include_metadata': 'true',
@@ -177,7 +180,7 @@ class TestE2EExtract:
         http_client: httpx.Client,
         sample_pdf_file: Path,
     ) -> None:
-        with open(sample_pdf_file, 'rb') as f:
+        with sample_pdf_file.open('rb') as f:
             files = {'file': ('test.pdf', f, 'application/pdf')}
             data = {
                 'include_metadata': 'true',
@@ -199,7 +202,7 @@ class TestE2EAsync:
         sample_text_file: Path,
     ) -> None:
         # Job starten
-        with open(sample_text_file, 'rb') as f:
+        with sample_text_file.open('rb') as f:
             files = {'file': ('async.txt', f, 'text/plain')}
             data = {
                 'include_metadata': 'true',

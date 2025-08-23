@@ -6,8 +6,7 @@ from __future__ import annotations
 
 import time
 from datetime import UTC, datetime
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
 
@@ -15,6 +14,9 @@ from app.core.config import settings
 from app.core.logging import get_tracer
 from app.extractors.base import BaseExtractor
 from app.models.schemas import ExtractedText, FileMetadata, StructuredData
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TikaExtractor(BaseExtractor):
@@ -38,7 +40,7 @@ class TikaExtractor(BaseExtractor):
     def can_extract(self, file_path: Path, mime_type: str) -> bool:
         """Tika darf grundsätzlich alles verarbeiten, wird aber als letzter Fallback genutzt."""
         # Falls bestimmte Formate bevorzugt geroutet werden sollen
-        prefer = set(ext.lower() for ext in settings.tika_prefer_for_formats or [])
+        prefer = {ext.lower() for ext in settings.tika_prefer_for_formats or []}
         if file_path.suffix.lower() in prefer or mime_type.lower() in prefer:
             return True
         # Sonst: generisch ja, aber die Factory-Order stellt sicher, dass Tika zuletzt greift

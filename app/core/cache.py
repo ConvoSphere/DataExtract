@@ -4,7 +4,7 @@ Caching-System für die Universal File Extractor API.
 
 import hashlib
 import json
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -55,7 +55,7 @@ class CacheManager:
     def _generate_file_hash(self, file_path: Path) -> str:
         """Generiert einen Hash für eine Datei."""
         hasher = hashlib.sha256()
-        with open(file_path, 'rb') as f:
+        with file_path.open('rb') as f:
             for chunk in iter(lambda: f.read(4096), b''):
                 hasher.update(chunk)
         return hasher.hexdigest()
@@ -76,21 +76,21 @@ class CacheManager:
                 value = self.redis_client.get(key)
                 if value:
                     self.cache_stats['hits'] += 1
-                    logger.debug(f'Cache hit (Redis): {key}')
+                    logger.debug('Cache hit (Redis)', key=key)
                     return json.loads(value)
 
             # Memory-Cache versuchen
             if key in self.memory_cache:
                 cache_entry = self.memory_cache[key]
-                if cache_entry['expires_at'] > datetime.now():
+                if cache_entry['expires_at'] > datetime.now(UTC):
                     self.cache_stats['hits'] += 1
-                    logger.debug(f'Cache hit (Memory): {key}')
+                    logger.debug('Cache hit (Memory)', key=key)
                     return cache_entry['value']
                 # Abgelaufener Eintrag entfernen
                 del self.memory_cache[key]
 
             self.cache_stats['misses'] += 1
-            logger.debug(f'Cache miss: {key}')
+            logger.debug('Cache miss', key=key)
             return None
 
         except (OSError, ValueError, TypeError) as e:
@@ -119,17 +119,17 @@ class CacheManager:
                 )
                 if success:
                     self.cache_stats['sets'] += 1
-                    logger.debug(f'Cache set (Redis): {key}, TTL: {ttl}s')
+                    logger.debug('Cache set (Redis)', key=key, ttl=ttl)
                     return True
 
             # Memory-Cache als Fallback
-            expires_at = datetime.now() + timedelta(seconds=ttl)
+            expires_at = datetime.now(UTC) + timedelta(seconds=ttl)
             self.memory_cache[key] = {
                 'value': value,
                 'expires_at': expires_at,
             }
             self.cache_stats['sets'] += 1
-            logger.debug(f'Cache set (Memory): {key}, TTL: {ttl}s')
+            logger.debug('Cache set (Memory)', key=key, ttl=ttl)
             return True
 
         except (OSError, ValueError, TypeError) as e:
@@ -156,7 +156,7 @@ class CacheManager:
                 del self.memory_cache[key]
 
             self.cache_stats['deletes'] += 1
-            logger.debug(f'Cache delete: {key}')
+            logger.debug('Cache delete', key=key)
             return True
 
         except (OSError, ValueError, TypeError) as e:

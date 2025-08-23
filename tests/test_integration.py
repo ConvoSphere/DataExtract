@@ -81,7 +81,7 @@ class TestExtractEndpoint:
 
     def test_extract_text_file(self, client: TestClient, sample_text_file: Path):
         """Testet die Extraktion einer Text-Datei."""
-        with open(sample_text_file, 'rb') as f:
+        with sample_text_file.open('rb') as f:
             response = client.post(
                 '/api/v1/extract',
                 files={'file': ('test.txt', f, 'text/plain')},
@@ -102,7 +102,7 @@ class TestExtractEndpoint:
 
     def test_extract_pdf_file(self, client: TestClient, sample_pdf_file: Path):
         """Testet die Extraktion einer PDF-Datei."""
-        with open(sample_pdf_file, 'rb') as f:
+        with sample_pdf_file.open('rb') as f:
             response = client.post(
                 '/api/v1/extract',
                 files={'file': ('test.pdf', f, 'application/pdf')},
@@ -139,7 +139,7 @@ class TestExtractEndpoint:
             temp_file = Path(f.name)
 
         try:
-            with open(temp_file, 'rb') as f:
+            with temp_file.open('rb') as f:
                 response = client.post(
                     '/api/v1/extract',
                     files={'file': ('test.xyz', f, 'application/octet-stream')},
@@ -162,7 +162,7 @@ class TestExtractEndpoint:
             temp_file = Path(f.name)
 
         try:
-            with open(temp_file, 'rb') as f:
+            with temp_file.open('rb') as f:
                 response = client.post(
                     '/api/v1/extract',
                     files={'file': ('large.txt', f, 'text/plain')},
@@ -183,7 +183,7 @@ class TestAsyncExtractEndpoint:
 
     def test_async_extract_text_file(self, client: TestClient, sample_text_file: Path):
         """Testet asynchrone Extraktion einer Text-Datei."""
-        with open(sample_text_file, 'rb') as f:
+        with sample_text_file.open('rb') as f:
             response = client.post(
                 '/api/v1/extract/async',
                 files={'file': ('test.txt', f, 'text/plain')},
@@ -203,7 +203,7 @@ class TestAsyncExtractEndpoint:
     def test_get_job_status(self, client: TestClient, sample_text_file: Path):
         """Testet das Abrufen des Job-Status."""
         # Erst Job starten
-        with open(sample_text_file, 'rb') as f:
+        with sample_text_file.open('rb') as f:
             response = client.post(
                 '/api/v1/extract/async',
                 files={'file': ('test.txt', f, 'text/plain')},
@@ -238,7 +238,7 @@ class TestAuthentication:
         sample_text_file: Path,
     ):
         """Testet Extraktion ohne Auth wenn deaktiviert."""
-        with open(sample_text_file, 'rb') as f:
+        with sample_text_file.open('rb') as f:
             response = client.post(
                 '/api/v1/extract',
                 files={'file': ('test.txt', f, 'text/plain')},
@@ -257,7 +257,7 @@ class TestAuthentication:
         sample_text_file: Path,
     ):
         """Testet Extraktion mit gültigem API-Key."""
-        with open(sample_text_file, 'rb') as f:
+        with sample_text_file.open('rb') as f:
             response = client.post(
                 '/api/v1/extract',
                 files={'file': ('test.txt', f, 'text/plain')},
@@ -277,7 +277,7 @@ class TestAuthentication:
         sample_text_file: Path,
     ):
         """Testet Extraktion mit ungültigem API-Key."""
-        with open(sample_text_file, 'rb') as f:
+        with sample_text_file.open('rb') as f:
             response = client.post(
                 '/api/v1/extract',
                 files={'file': ('test.txt', f, 'text/plain')},
@@ -327,7 +327,7 @@ class TestPerformance:
         import time
 
         def make_request():
-            with open(sample_text_file, 'rb') as f:
+            with sample_text_file.open('rb') as f:
                 response = client.post(
                     '/api/v1/extract',
                     files={'file': ('test.txt', f, 'text/plain')},
