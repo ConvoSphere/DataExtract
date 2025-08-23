@@ -48,6 +48,7 @@ jobs:
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
           type=sha
+          type=raw,value=latest,enable=${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production') }}
 
     - name: Build and push Docker images
       uses: docker/build-push-action@v5
