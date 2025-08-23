@@ -7,9 +7,6 @@ from pathlib import Path
 
 from PIL import Image
 
-# Heavy OCR dependencies are imported lazily inside methods to reduce baseline memory usage
-OCR_AVAILABLE = True
-
 from app.core.config import settings
 from app.extractors.base import BaseExtractor
 from app.models.schemas import (
@@ -18,6 +15,10 @@ from app.models.schemas import (
     FileMetadata,
     StructuredData,
 )
+
+# Heavy OCR dependencies are imported lazily
+# inside methods to reduce baseline memory usage
+OCR_AVAILABLE = True
 
 
 class ImageExtractor(BaseExtractor):

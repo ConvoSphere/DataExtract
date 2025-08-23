@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from app.core.auth import check_rate_limit, get_current_user
 from app.core.config import settings
-from app.core.exceptions import FileExtractorException, convert_to_http_exception
+from app.core.exceptions import FileExtractorError, convert_to_http_exception
 from app.core.queue import get_job_queue
 from app.core.validation import validate_file_upload
 from app.extractors import is_format_supported
@@ -48,7 +48,7 @@ async def extract_file_async(
         description='Callback-URL für Benachrichtigungen',
     ),
     priority: str = Form('normal', description='Priorität (low, normal, high)'),
-    user: dict = Depends(get_current_user),
+    _user: dict = Depends(get_current_user),
     _: dict = Depends(check_rate_limit),
     file_info: dict = Depends(validate_file_upload),
 ) -> AsyncExtractionResponse:
@@ -72,46 +72,41 @@ async def extract_file_async(
         # Temporäre Datei aus Validierung verwenden
         temp_file_path = Path(file_info['temp_path'])
 
-        try:
-            # Datei-Format prüfen (Extractor-Fähigkeit)
-            if not is_format_supported(temp_file_path):
-                raise HTTPException(
-                    status_code=415,
-                    detail=f"Dateiformat '{Path(file.filename).suffix}' wird nicht unterstützt",
-                )
-
-            # Job-Queue abrufen
-            queue = get_job_queue()
-
-            # Job zur asynchronen Verarbeitung übermitteln
-            return queue.submit_job(
-                file_path=temp_file_path,
-                include_metadata=include_metadata,
-                include_text=include_text,
-                include_structure=include_structure,
-                include_images=include_images,
-                include_media=include_media,
-                callback_url=callback_url,
-                priority=priority,
+        # Datei-Format prüfen (Extractor-Fähigkeit)
+        if not is_format_supported(temp_file_path):
+            raise HTTPException(
+                status_code=415,
+                detail=f"Dateiformat '{Path(file.filename).suffix}' wird nicht unterstützt",
             )
 
-        except Exception as e:
-            # Temporäre Datei bei Fehler löschen
-            try:
-                temp_file_path.unlink()
-            except Exception:
-                pass
-            raise e
+        # Job-Queue abrufen
+        queue = get_job_queue()
+
+        # Job zur asynchronen Verarbeitung übermitteln
+        return queue.submit_job(
+            file_path=temp_file_path,
+            include_metadata=include_metadata,
+            include_text=include_text,
+            include_structure=include_structure,
+            include_images=include_images,
+            include_media=include_media,
+            callback_url=callback_url,
+            priority=priority,
+        )
 
     except HTTPException:
+        # Temporäre Datei bei Fehler löschen
+        Path(file_info.get('temp_path', '')).unlink(missing_ok=True)
         raise
-    except FileExtractorException as e:
-        raise convert_to_http_exception(e)
+    except FileExtractorError as e:
+        Path(file_info.get('temp_path', '')).unlink(missing_ok=True)
+        raise convert_to_http_exception(e) from e
     except Exception as e:
+        Path(file_info.get('temp_path', '')).unlink(missing_ok=True)
         raise HTTPException(
             status_code=500,
             detail=f'Unerwarteter Fehler: {e!s}',
-        )
+        ) from e
 
 
 @router.get(
@@ -152,7 +147,7 @@ async def get_job_status(job_id: str) -> JobStatus:
         raise HTTPException(
             status_code=500,
             detail=f'Fehler beim Abrufen des Job-Status: {e!s}',
-        )
+        ) from e
 
 
 @router.delete(
@@ -188,7 +183,7 @@ async def cancel_job(job_id: str):
         raise HTTPException(
             status_code=500,
             detail=f'Fehler beim Abbrechen des Jobs: {e!s}',
-        )
+        ) from e
 
 
 @router.get(
@@ -220,7 +215,7 @@ async def get_job_stats():
         raise HTTPException(
             status_code=500,
             detail=f'Fehler beim Abrufen der Job-Statistiken: {e!s}',
-        )
+        ) from e
 
 
 @router.post(
@@ -252,4 +247,4 @@ async def cleanup_old_jobs(max_age_hours: int = 24):
         raise HTTPException(
             status_code=500,
             detail=f'Fehler bei der Job-Bereinigung: {e!s}',
-        )
+        ) from e

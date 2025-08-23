@@ -4,12 +4,16 @@ Security Middleware und Utilities.
 
 from __future__ import annotations
 
-from fastapi import Request, Response
+from typing import TYPE_CHECKING
+
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
 from app.core.config import settings
 from app.core.logging import get_logger
+
+if TYPE_CHECKING:
+    from fastapi import Request, Response
 
 logger = get_logger('security')
 

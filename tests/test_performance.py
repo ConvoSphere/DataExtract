@@ -72,7 +72,7 @@ class TestResponseTime:
         try:
             start_time = time.time()
 
-            with open(temp_file, 'rb') as f:
+            with temp_file.open('rb') as f:
                 response = client.post(
                     '/api/v1/extract',
                     files={'file': ('small.txt', f, 'text/plain')},
@@ -100,7 +100,7 @@ class TestResponseTime:
         """Testet Extraktionszeit für große Dateien."""
         start_time = time.time()
 
-        with open(large_text_file, 'rb') as f:
+        with large_text_file.open('rb') as f:
             response = client.post(
                 '/api/v1/extract',
                 files={'file': ('large.txt', f, 'text/plain')},
@@ -171,7 +171,7 @@ class TestConcurrency:
             try:
                 start_time = time.time()
 
-                with open(temp_file, 'rb') as f:
+                with temp_file.open('rb') as f:
                     response = client.post(
                         '/api/v1/extract',
                         files={'file': ('test.txt', f, 'text/plain')},
@@ -227,7 +227,7 @@ class TestMemoryUsage:
             temp_file = Path(f.name)
 
         try:
-            with open(temp_file, 'rb') as f:
+            with temp_file.open('rb') as f:
                 response = client.post(
                     '/api/v1/extract',
                     files={'file': ('small.txt', f, 'text/plain')},
@@ -256,7 +256,7 @@ class TestMemoryUsage:
         process = psutil.Process(os.getpid())
         initial_memory = process.memory_info().rss
 
-        with open(large_text_file, 'rb') as f:
+        with large_text_file.open('rb') as f:
             response = client.post(
                 '/api/v1/extract',
                 files={'file': ('large.txt', f, 'text/plain')},
@@ -313,7 +313,7 @@ class TestThroughput:
                 temp_file = Path(f.name)
 
             try:
-                with open(temp_file, 'rb') as f:
+                with temp_file.open('rb') as f:
                     response = client.post(
                         '/api/v1/extract',
                         files={'file': (f'test_{i}.txt', f, 'text/plain')},
@@ -358,7 +358,7 @@ class TestScalability:
             try:
                 start_time = time.time()
 
-                with open(temp_file, 'rb') as f:
+                with temp_file.open('rb') as f:
                     response = client.post(
                         '/api/v1/extract',
                         files={'file': (f'test_{size}.txt', f, 'text/plain')},

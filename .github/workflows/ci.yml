@@ -102,7 +102,7 @@ jobs:
         ./security-scan.sh
 
     - name: Upload security reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: security-reports
         path: |

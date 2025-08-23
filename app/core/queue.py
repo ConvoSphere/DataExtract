@@ -129,8 +129,8 @@ class JobQueue:
             self.redis_client = redis.from_url(settings.redis_url, db=settings.redis_db)
             # Check connectivity
             self.redis_client.ping()
-        except Exception as e:
-            raise ImportError(f'Redis nicht erreichbar: {e}')
+        except (redis.exceptions.RedisError, ConnectionError) as e:
+            raise ImportError(f'Redis nicht erreichbar: {e}') from e
 
         # Celery-App
         self.celery_app = Celery(

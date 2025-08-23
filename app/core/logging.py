@@ -144,7 +144,7 @@ def setup_custom_metrics() -> dict:
     """Definiert Custom Metrics für den Microservice."""
     meter = get_meter('file_extractor')
 
-    metrics_dict = {
+    return {
         # Counter für Extraktionen
         'extractions_total': meter.create_counter(
             name='file_extractions_total',
@@ -183,7 +183,6 @@ def setup_custom_metrics() -> dict:
         ),
     }
 
-    return metrics_dict
 
 
 def log_request_info(

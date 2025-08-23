@@ -8,7 +8,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from app.core.auth import check_rate_limit, get_current_user
-from app.core.exceptions import FileExtractorException, convert_to_http_exception
+from app.core.exceptions import FileExtractorError, convert_to_http_exception
 from app.core.logging import get_logger
 from app.core.metrics import (
     record_extraction_error,
@@ -51,7 +51,7 @@ async def extract_file(
         False,
         description='Strukturierte Daten extrahieren',
     ),
-    language: str | None = Form(
+    _language: str | None = Form(
         None,
         description='Sprache für die Extraktion (ISO 639-1)',
     ),
@@ -139,7 +139,8 @@ async def extract_file(
                     if text_len < 20:
                         from app.extractors.tika_extractor import TikaExtractor
 
-                        # Vermeide teure/fehlerhafte Fallbacks wenn Tika nicht verfügbar ist
+                        # Vermeide teure/fehlerhafte Fallbacks
+                        # wenn Tika nicht verfügbar ist
                         if not TikaExtractor.is_available():
                             raise RuntimeError(
                                 'Tika server not available, skipping fallback',
@@ -220,7 +221,7 @@ async def extract_file(
 
     except HTTPException:
         raise
-    except FileExtractorException as e:
+    except FileExtractorError as e:
         # Metrics für Extraktionsfehler
         duration = time.time() - start_time
         record_extraction_error(
@@ -229,7 +230,7 @@ async def extract_file(
             error_type='FileExtractorException',
             error_message=str(e),
         )
-        raise convert_to_http_exception(e)
+        raise convert_to_http_exception(e) from e
     except Exception as e:
         # Metrics für Extraktionsfehler
         duration = time.time() - start_time
@@ -242,7 +243,7 @@ async def extract_file(
         raise HTTPException(
             status_code=500,
             detail=f'Unerwarteter Fehler: {e!s}',
-        )
+        ) from e
 
 
 @router.get(
@@ -286,7 +287,7 @@ async def get_supported_formats():
         raise HTTPException(
             status_code=500,
             detail=f'Fehler beim Abrufen der Formate: {e!s}',
-        )
+        ) from e
 
 
 @router.post(

@@ -8,12 +8,16 @@ import hashlib
 import mimetypes
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import magic
-from fastapi import HTTPException, UploadFile, status
+from fastapi import HTTPException, status
 
 from app.core.config import settings
 from app.core.logging import get_logger
+
+if TYPE_CHECKING:
+    from fastapi import UploadFile
 
 logger = get_logger('validation')
 
@@ -183,8 +187,7 @@ class FileValidator:
         """Ermittelt den MIME-Type einer Datei."""
         try:
             # Python-magic für präzise MIME-Type Erkennung
-            mime_type = magic.from_file(str(file_path), mime=True)
-            return mime_type
+            return magic.from_file(str(file_path), mime=True)
         except (OSError, AttributeError):
             # Fallback: mimetypes Modul
             mime_type, _ = mimetypes.guess_type(str(file_path))
