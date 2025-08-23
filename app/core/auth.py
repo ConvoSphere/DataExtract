@@ -15,7 +15,7 @@ try:
     import redis as _redis  # type: ignore
 
     RedisError = _redis.exceptions.RedisError
-except Exception:  # pragma: no cover - fallback if redis missing
+except (ImportError, AttributeError):  # pragma: no cover - fallback if redis missing
     class RedisError(Exception):
         pass
 

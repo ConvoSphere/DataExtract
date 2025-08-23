@@ -9,6 +9,11 @@ from typing import Any
 
 try:
     import PyPDF2
+    try:
+        from PyPDF2.errors import PdfReadError  # type: ignore[attr-defined]
+    except Exception:  # PyPDF2 older versions
+        class PdfReadError(Exception):
+            pass
 
     PDF_AVAILABLE = True
 except ImportError:
@@ -73,7 +78,7 @@ class PDFExtractor(BaseExtractor):
                 # Seitenanzahl
                 metadata.page_count = len(pdf_reader.pages)
 
-        except Exception as e:
+        except (PdfReadError, OSError, ValueError, AttributeError, TypeError) as e:
             self.logger.warning(
                 'PDF metadata extraction failed',
                 filename=file_path.name,
@@ -97,11 +102,11 @@ class PDFExtractor(BaseExtractor):
                         if page_text:
                             page_texts.append(page_text)
                             content += page_text + '\n'
-                    except Exception:
+                    except (PdfReadError, ValueError, AttributeError, TypeError):
                         # Seite überspringen, wenn Text-Extraktion fehlschlägt
                         continue
 
-        except Exception as err:
+        except (PdfReadError, OSError, ValueError, AttributeError, TypeError) as err:
             raise RuntimeError('PDF-Extraktion fehlgeschlagen') from err
 
         # Text bereinigen
@@ -138,10 +143,10 @@ class PDFExtractor(BaseExtractor):
                             page_tables = self._extract_tables(page_text, page_num)
                             tables.extend(page_tables)
 
-                    except Exception:
+                    except (PdfReadError, ValueError, AttributeError, TypeError):
                         continue
 
-        except Exception as e:
+        except (PdfReadError, OSError, ValueError, AttributeError, TypeError) as e:
             self.logger.warning(
                 'PDF structured data extraction failed',
                 filename=file_path.name,

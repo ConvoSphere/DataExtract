@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from app.core.auth import check_rate_limit, get_current_user
 from app.core.config import settings
-from app.core.exceptions import FileExtractorException, convert_to_http_exception
+from app.core.exceptions import FileExtractorError, convert_to_http_exception
 from app.core.queue import get_job_queue
 from app.core.validation import validate_file_upload
 from app.extractors import is_format_supported
@@ -98,7 +98,7 @@ async def extract_file_async(
         # Temporäre Datei bei Fehler löschen
         Path(file_info.get('temp_path', '')).unlink(missing_ok=True)
         raise
-    except FileExtractorException as e:
+    except FileExtractorError as e:
         Path(file_info.get('temp_path', '')).unlink(missing_ok=True)
         raise convert_to_http_exception(e) from e
     except Exception as e:

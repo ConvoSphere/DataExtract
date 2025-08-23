@@ -6,9 +6,6 @@ import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
-MEDIA_AVAILABLE = True
-# Defer heavy media imports to runtime to reduce idle memory usage
-
 from app.core.config import settings
 from app.extractors.base import BaseExtractor
 from app.models.schemas import (
@@ -17,6 +14,9 @@ from app.models.schemas import (
     FileMetadata,
     StructuredData,
 )
+
+MEDIA_AVAILABLE = True
+# Defer heavy media imports to runtime to reduce idle memory usage
 
 
 class MediaExtractor(BaseExtractor):

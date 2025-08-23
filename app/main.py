@@ -15,7 +15,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api import api_router
 from app.core.config import settings
-from app.core.exceptions import FileExtractorException, convert_to_http_exception
+from app.core.exceptions import FileExtractorError, convert_to_http_exception
 from app.core.logging import (
     get_logger,
     get_tracer,
@@ -252,11 +252,11 @@ if not settings.debug:
     )
 
 
-# Exception Handler für FileExtractorException
-@app.exception_handler(FileExtractorException)
+# Exception Handler für FileExtractorError
+@app.exception_handler(FileExtractorError)
 async def file_extractor_exception_handler(
     _request: Request,
-    exc: FileExtractorException,
+    exc: FileExtractorError,
 ):
     """Exception Handler für FileExtractorException."""
     http_exception = convert_to_http_exception(exc)

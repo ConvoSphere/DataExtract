@@ -7,7 +7,7 @@ from typing import Any
 from fastapi import HTTPException, status
 
 
-class FileExtractorException(Exception):
+class FileExtractorError(Exception):
     """Basis-Exception für alle File Extractor Fehler."""
 
     def __init__(
@@ -22,7 +22,7 @@ class FileExtractorException(Exception):
         super().__init__(self.message)
 
 
-class UnsupportedFileFormatException(FileExtractorException):
+class UnsupportedFileFormatException(FileExtractorError):
     """Exception für nicht unterstützte Dateiformate."""
 
     def __init__(self, file_extension: str):
@@ -33,7 +33,7 @@ class UnsupportedFileFormatException(FileExtractorException):
         )
 
 
-class FileTooLargeException(FileExtractorException):
+class FileTooLargeException(FileExtractorError):
     """Exception für zu große Dateien."""
 
     def __init__(self, file_size: int, max_size: int):
@@ -44,7 +44,7 @@ class FileTooLargeException(FileExtractorException):
         )
 
 
-class ExtractionFailedException(FileExtractorException):
+class ExtractionFailedException(FileExtractorError):
     """Exception für fehlgeschlagene Extraktionen."""
 
     def __init__(self, file_name: str, reason: str):
@@ -55,7 +55,7 @@ class ExtractionFailedException(FileExtractorException):
         )
 
 
-class InvalidFileException(FileExtractorException):
+class InvalidFileException(FileExtractorError):
     """Exception für ungültige oder beschädigte Dateien."""
 
     def __init__(self, file_name: str, reason: str):
@@ -66,7 +66,7 @@ class InvalidFileException(FileExtractorException):
         )
 
 
-class TimeoutException(FileExtractorException):
+class TimeoutException(FileExtractorError):
     """Exception für Timeouts bei der Extraktion."""
 
     def __init__(self, file_name: str, timeout_seconds: int):
@@ -77,7 +77,7 @@ class TimeoutException(FileExtractorException):
         )
 
 
-def convert_to_http_exception(exc: FileExtractorException) -> HTTPException:
+def convert_to_http_exception(exc: FileExtractorError) -> HTTPException:
     """Konvertiert eine FileExtractorException zu einer HTTPException."""
 
     error_mapping = {

@@ -8,7 +8,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from app.core.auth import check_rate_limit, get_current_user
-from app.core.exceptions import FileExtractorException, convert_to_http_exception
+from app.core.exceptions import FileExtractorError, convert_to_http_exception
 from app.core.logging import get_logger
 from app.core.metrics import (
     record_extraction_error,
@@ -221,7 +221,7 @@ async def extract_file(
 
     except HTTPException:
         raise
-    except FileExtractorException as e:
+    except FileExtractorError as e:
         # Metrics für Extraktionsfehler
         duration = time.time() - start_time
         record_extraction_error(

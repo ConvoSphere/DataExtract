@@ -8,7 +8,7 @@ import re
 from datetime import UTC, datetime
 from pathlib import Path
 
-from defusedxml import ElementTree as ET
+from defusedxml import ElementTree as ElementTree
 
 from app.extractors.base import BaseExtractor
 from app.models.schemas import ExtractedText, FileMetadata, StructuredData
@@ -169,7 +169,7 @@ class TextExtractor(BaseExtractor):
     def _extract_xml_structure(self, file_path: Path) -> StructuredData:
         """Extrahiert Struktur aus XML/HTML-Dateien."""
         try:
-            tree = ET.parse(file_path)
+            tree = ElementTree.parse(file_path)
             root = tree.getroot()
 
             # Links extrahieren
