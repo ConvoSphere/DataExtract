@@ -9,6 +9,7 @@ from typing import Any
 from celery import Celery, current_task
 
 from app.core.config import settings
+from app.core.logging import get_logger
 from app.core.metrics import (
     record_extraction_error,
     record_extraction_start,
@@ -16,9 +17,11 @@ from app.core.metrics import (
     record_job_status_change,
 )
 from app.core.queue import get_job_queue
+from app.core.security import ensure_safe_callback_url
 from app.extractors import get_extractor
 
 celery = Celery('file_extractor', broker=settings.redis_url, backend=settings.redis_url)
+logger = get_logger('worker_tasks')
 
 
 @celery.task(name='app.workers.tasks.extract_file')
@@ -37,6 +40,7 @@ def extract_file_task(job_id: str) -> dict[str, Any]:
         Extraktionsergebnis
     """
     start_time = time.time()
+    file_path_obj: Path | None = None
 
     try:
         # Job-Queue abrufen
@@ -64,6 +68,7 @@ def extract_file_task(job_id: str) -> dict[str, Any]:
 
         # Dateipfad
         file_path = Path(job_data['file_path'])
+        file_path_obj = file_path
 
         # Extraktionsparameter
         include_metadata = job_data.get('include_metadata', 'true').lower() == 'true'
@@ -152,21 +157,36 @@ def extract_file_task(job_id: str) -> dict[str, Any]:
 
         # Callback-URL aufrufen (falls angegeben)
         callback_url = job_data.get('callback_url')
+        safe_callback_url = None
         if callback_url:
             try:
-                import requests
-
-                requests.post(
-                    callback_url,
-                    json={
-                        'job_id': job_id,
-                        'status': 'completed',
-                        'result': result_dict,
-                    },
-                    timeout=10,
+                safe_callback_url = ensure_safe_callback_url(callback_url)
+            except ValueError as exc:
+                logger.warning(
+                    'Unsafe callback URL rejected',
+                    job_id=job_id,
+                    callback_url=callback_url,
+                    error=str(exc),
                 )
-            except Exception:
-                pass
+            else:
+                try:
+                    import requests
+
+                    requests.post(
+                        safe_callback_url,
+                        json={
+                            'job_id': job_id,
+                            'status': 'completed',
+                            'result': result_dict,
+                        },
+                        timeout=10,
+                    )
+                except Exception as request_error:
+                    logger.warning(
+                        'Callback delivery failed',
+                        job_id=job_id,
+                        error=str(request_error),
+                    )
 
         # Fortschritt melden
         current_task.update_state(
@@ -207,23 +227,49 @@ def extract_file_task(job_id: str) -> dict[str, Any]:
             callback_url = (
                 job_data.get('callback_url') if 'job_data' in locals() else None
             )
+            safe_callback_url = None
             if callback_url:
                 try:
-                    import requests
-
-                    requests.post(
-                        callback_url,
-                        json={
-                            'job_id': job_id,
-                            'status': 'failed',
-                            'error': str(e),
-                        },
-                        timeout=10,
+                    safe_callback_url = ensure_safe_callback_url(callback_url)
+                except ValueError as exc:
+                    logger.warning(
+                        'Unsafe callback URL rejected',
+                        job_id=job_id,
+                        callback_url=callback_url,
+                        error=str(exc),
                     )
-                except Exception:
-                    pass
+                else:
+                    try:
+                        import requests
+
+                        requests.post(
+                            safe_callback_url,
+                            json={
+                                'job_id': job_id,
+                                'status': 'failed',
+                                'error': str(e),
+                            },
+                            timeout=10,
+                        )
+                    except Exception as request_error:
+                        logger.warning(
+                            'Callback delivery failed',
+                            job_id=job_id,
+                            error=str(request_error),
+                        )
 
         except Exception:
             pass
 
         raise e
+    finally:
+        if file_path_obj and file_path_obj.exists():
+            try:
+                file_path_obj.unlink()
+            except OSError as cleanup_error:
+                logger.warning(
+                    'Failed to remove temporary file after job completion',
+                    job_id=job_id,
+                    temp_path=str(file_path_obj),
+                    error=str(cleanup_error),
+                )

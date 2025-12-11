@@ -127,12 +127,27 @@ class FileValidator:
                 return False, f'UNSUPPORTED_EXTENSION:{extension}', None
 
             # 4. Temporäre Datei erstellen für weitere Validierung
+            total_size = 0
+            await file.seek(0)
             with tempfile.NamedTemporaryFile(
                 delete=False,
                 suffix=extension,
             ) as temp_file:
-                content = await file.read()
-                temp_file.write(content)
+                while True:
+                    chunk = await file.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    total_size += len(chunk)
+                    if total_size > self.max_file_size:
+                        temp_path = Path(temp_file.name)
+                        temp_file.close()
+                        temp_path.unlink(missing_ok=True)
+                        return (
+                            False,
+                            f'Datei zu groß. Maximum: {self.max_file_size} bytes',
+                            None,
+                        )
+                    temp_file.write(chunk)
                 temp_file_path = Path(temp_file.name)
 
             try:
@@ -158,7 +173,7 @@ class FileValidator:
 
                 file_info = {
                     'filename': file.filename,
-                    'size': len(content),
+                    'size': total_size,
                     'extension': extension,
                     'mime_type': mime_type,
                     'hash': file_hash,
@@ -168,7 +183,7 @@ class FileValidator:
                 logger.info(
                     'File validation successful',
                     filename=file.filename,
-                    size=len(content),
+                    size=total_size,
                     mime_type=mime_type,
                     hash=file_hash,
                 )

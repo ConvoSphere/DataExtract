@@ -3,6 +3,7 @@ Authentifizierung für die Universal File Extractor API.
 """
 
 import os
+import time
 
 from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -120,6 +121,7 @@ async def get_current_user(
             'name': 'anonymous',
             'permissions': ['read'],
             'rate_limit': 10,
+            'api_key': 'anonymous',
         }
 
     if not credentials:
@@ -142,7 +144,11 @@ async def get_current_user(
         )
 
     logger.info('API key validated', user=user_info['name'])
-    return user_info
+    # API-Key dem User-Kontext hinzufügen, damit Rate Limiting korrekt arbeitet
+    return {
+        **user_info,
+        'api_key': api_key,
+    }
 
 
 async def require_permission(permission: str):
@@ -173,6 +179,7 @@ class RateLimiter:
 
     def __init__(self):
         self.redis_client = None
+        self._memory_counters: dict[str, dict[str, float | int]] = {}
         try:
             import redis
 
@@ -205,14 +212,13 @@ class RateLimiter:
         Returns:
             True wenn Request erlaubt ist, False wenn Limit überschritten
         """
+        rate_limit = user_info.get('rate_limit', 10)
+        window_seconds = 60  # 1 Minute Window
+
         if not self.redis_client:
-            # Fallback: In-Memory Rate Limiting (nicht für Produktion)
-            return True
+            return self._check_memory_limit(api_key, rate_limit, window_seconds)
 
         try:
-            rate_limit = user_info.get('rate_limit', 10)
-            window_seconds = 60  # 1 Minute Window
-
             # Redis-basiertes Rate Limiting
             key = f'rate_limit:{api_key}'
             current = self.redis_client.get(key)
@@ -227,12 +233,40 @@ class RateLimiter:
                 logger.warning('Rate limit exceeded', user=user_info['name'])
                 return False
 
-            # Increment Counter
+            # Counter erhöhen
             self.redis_client.incr(key)
             return True
         except (RedisError, ConnectionError, ValueError) as e:
-            logger.warning('RateLimiter: error using Redis, allowing request', error=str(e))
+            logger.warning(
+                'RateLimiter: error using Redis, falling back to memory store',
+                error=str(e),
+            )
+            return self._check_memory_limit(api_key, rate_limit, window_seconds)
+
+    def _check_memory_limit(
+        self,
+        api_key: str,
+        rate_limit: int,
+        window_seconds: int,
+    ) -> bool:
+        """Einfache In-Memory-Implementierung als Fallback."""
+        now = time.monotonic()
+        counter = self._memory_counters.get(api_key)
+
+        if not counter or now >= counter['reset_at']:  # type: ignore[index]
+            self._memory_counters[api_key] = {
+                'count': 1,
+                'reset_at': now + window_seconds,
+            }
             return True
+
+        count = counter['count']  # type: ignore[index]
+        if count >= rate_limit:
+            logger.warning('Rate limit exceeded (memory)', api_key=api_key[:8])
+            return False
+
+        counter['count'] = count + 1  # type: ignore[index]
+        return True
 
 
 # Globale Rate Limiter Instanz
@@ -252,9 +286,7 @@ async def check_rate_limit(user: dict = Depends(get_current_user)) -> dict:
     Raises:
         HTTPException: Wenn Rate Limit überschritten
     """
-    # API-Key aus Request extrahieren (vereinfacht)
-    # In einer echten Implementierung würden wir den API-Key aus dem Request extrahieren
-    api_key = 'dummy'  # Placeholder
+    api_key = user.get('api_key', 'anonymous')
 
     if not rate_limiter.check_rate_limit(api_key, user):
         raise HTTPException(
