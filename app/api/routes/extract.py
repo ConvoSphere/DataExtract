@@ -300,6 +300,12 @@ async def extract_batch(
     include_metadata: bool = Form(True),
     include_text: bool = Form(True),
     include_structure: bool = Form(False),
+    _language: str | None = Form(
+        None,
+        description='Sprache für die Extraktion (optional)',
+    ),
+    user: dict = Depends(get_current_user),
+    rate_limit_context: dict = Depends(check_rate_limit),
 ):
     """
     Extrahiert Inhalt aus mehreren Dateien in einem Batch.
@@ -317,18 +323,30 @@ async def extract_batch(
 
     for file in files:
         try:
-            # Einzelne Datei extrahieren
+            file_info = await validate_file_upload(file)
             result = await extract_file(
                 file=file,
                 include_metadata=include_metadata,
                 include_text=include_text,
                 include_structure=include_structure,
+                _language=_language,
+                user=user,
+                _=rate_limit_context,
+                file_info=file_info,
             )
             results.append(
                 {
                     'filename': file.filename,
                     'success': True,
                     'result': result,
+                },
+            )
+        except HTTPException as exc:
+            results.append(
+                {
+                    'filename': file.filename,
+                    'success': False,
+                    'error': exc.detail,
                 },
             )
         except Exception as e:

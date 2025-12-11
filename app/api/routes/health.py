@@ -5,8 +5,9 @@ Health-Check Routen für die API.
 import time
 from datetime import UTC, datetime
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from app.core.auth import check_rate_limit, get_current_user
 from app.core.config import settings
 from app.extractors import get_supported_formats
 from app.models.schemas import HealthResponse
@@ -60,7 +61,10 @@ async def health_check() -> HealthResponse:
     summary='Detaillierter API-Status',
     description='Gibt detaillierte Informationen über den API-Status zurück.',
 )
-async def detailed_health_check():
+async def detailed_health_check(
+    _user: dict = Depends(get_current_user),
+    __: dict = Depends(check_rate_limit),
+):
     """
     Detaillierter Health-Check mit zusätzlichen Informationen.
 
@@ -89,15 +93,16 @@ async def detailed_health_check():
             'basic_health': basic_health.dict(),
             'configuration': {
                 'app_name': settings.app_name,
-                'debug_mode': settings.debug,
                 'max_file_size': settings.max_file_size,
                 'extract_timeout': settings.extract_timeout,
-                'allowed_extensions': settings.allowed_extensions,
             },
-            'extractors': format_details,
+            'extractor_summary': {
+                'total_extractors': len(format_details),
+                'supported_extension_count': sum(
+                    len(entry.get('extensions', [])) for entry in format_details
+                ),
+            },
             'system_info': {
-                'python_version': '3.8+',
-                'fastapi_version': '0.104.1+',
                 'platform': 'linux',
             },
         }

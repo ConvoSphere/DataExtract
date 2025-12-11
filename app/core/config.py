@@ -2,6 +2,7 @@
 Konfigurationsmanagement für die Universal File Extractor API.
 """
 
+import secrets
 import tempfile
 from pathlib import Path
 
@@ -234,7 +235,7 @@ class Settings(BaseSettings):
         description='Header-Name für API-Key',
     )
     require_api_key: bool = Field(
-        default=False,
+        default=True,
         description='API-Key erforderlich',
     )
 
@@ -310,9 +311,27 @@ class Settings(BaseSettings):
         description='Namespace für OpenTelemetry',
     )
 
+    # Callback/URL Validation
+    callback_allowed_schemes: list[str] = Field(
+        default=['https'],
+        description='Erlaubte Schemas für Callback-URLs',
+    )
+    allow_insecure_callback_urls: bool = Field(
+        default=False,
+        description='HTTP-Callbacks nur erlauben, wenn explizit aktiviert',
+    )
+    callback_block_private_networks: bool = Field(
+        default=True,
+        description='Verweigert Callback-Hosts in privaten Netzwerken',
+    )
+    callback_block_localhost: bool = Field(
+        default=True,
+        description='Verhindert Callback-URLs zu localhost/loopback',
+    )
+
     # Additional fields for .env compatibility
     secret_key: str = Field(
-        default='your-secret-key-here',
+        default_factory=lambda: secrets.token_urlsafe(32),
         description='Secret key for the application',
     )
     allowed_hosts: str = Field(
@@ -347,8 +366,11 @@ class Settings(BaseSettings):
     ocr_languages: str = Field(default='eng,deu', description='OCR languages')
     rate_limit_requests: str = Field(default='100', description='Rate limit requests')
     rate_limit_window: str = Field(default='60', description='Rate limit window')
-    grafana_password: str = Field(default='admin', description='Grafana password')
-    grafana_user: str = Field(default='admin', description='Grafana user')
+    grafana_password: str = Field(
+        default_factory=lambda: secrets.token_urlsafe(16),
+        description='Grafana password',
+    )
+    grafana_user: str = Field(default='grafana-user', description='Grafana user')
     aws_region: str = Field(default='us-west-2', description='AWS region')
     smtp_port: str = Field(default='587', description='SMTP port')
     database_pool_size: str = Field(default='10', description='Database pool size')

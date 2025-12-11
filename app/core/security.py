@@ -4,7 +4,9 @@ Security Middleware und Utilities.
 
 from __future__ import annotations
 
+import ipaddress
 from typing import TYPE_CHECKING
+from urllib.parse import urlparse
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
@@ -113,8 +115,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Content Security Policy
         response.headers['Content-Security-Policy'] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline'; "
-            "style-src 'self' 'unsafe-inline'; "
+            "script-src 'self'; "
+            "style-src 'self'; "
             "img-src 'self' data: https:; "
             "font-src 'self'; "
             "connect-src 'self'; "
@@ -164,9 +166,14 @@ class InputSanitizationMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         """Sanitized Request-Input."""
 
-        # Response verarbeiten (Sanitizing-Ergebnisse aktuell nur intern genutzt)
-        _ = self._sanitize_url(str(request.url))
-        _ = self._sanitize_headers(dict(request.headers))
+        sanitized_url = self._sanitize_url(str(request.url))
+        sanitized_headers = self._sanitize_headers(dict(request.headers))
+        try:
+            request.state.sanitized_url = sanitized_url
+            request.state.sanitized_headers = sanitized_headers
+        except AttributeError:
+            # Request-State nicht verfügbar (z. B. während Tests)
+            pass
         return await call_next(request)
 
     def _sanitize_url(self, url: str) -> str:
@@ -183,10 +190,6 @@ class InputSanitizationMiddleware(BaseHTTPMiddleware):
         sanitized = {}
 
         for key, value in headers.items():
-            # Entferne gefährliche Header
-            if key.lower() in ['x-forwarded-for', 'x-real-ip', 'x-forwarded-host']:
-                continue
-
             # Sanitize Header-Werte
             sanitized_value = self._sanitize_string(value)
             sanitized[key] = sanitized_value
@@ -250,3 +253,50 @@ def get_security_middleware() -> list:
         InputSanitizationMiddleware,
         AuditLoggingMiddleware,
     ]
+
+
+def ensure_safe_callback_url(callback_url: str | None) -> str | None:
+    """Validiert Callback-URLs gegen Konfigurationsvorgaben."""
+    if not callback_url:
+        return None
+
+    parsed = urlparse(callback_url)
+
+    if not parsed.scheme or not parsed.netloc:
+        raise ValueError('Callback URL must include scheme and host')
+
+    scheme = parsed.scheme.lower()
+    allowed_schemes = [s.lower() for s in settings.callback_allowed_schemes]
+
+    if scheme not in allowed_schemes:
+        if not (scheme == 'http' and settings.allow_insecure_callback_urls):
+            raise ValueError(f'Callback URL scheme {scheme!r} is not allowed')
+
+    host = (parsed.hostname or '').lower()
+    if not host:
+        raise ValueError('Callback URL must include a hostname')
+
+    if settings.callback_block_localhost and host in {
+        'localhost',
+        '127.0.0.1',
+        '::1',
+    }:
+        raise ValueError('Callback URL to localhost is not allowed')
+
+    if settings.callback_block_private_networks:
+        try:
+            ip_obj = ipaddress.ip_address(host)
+        except ValueError:
+            # Kein direktes IP-Target, einfache Heuristik gegen lokale Domains
+            if host.endswith('.local') or host.endswith('.internal'):
+                raise ValueError('Callback host is not permitted')
+        else:
+            if (
+                ip_obj.is_private
+                or ip_obj.is_loopback
+                or ip_obj.is_reserved
+                or ip_obj.is_link_local
+            ):
+                raise ValueError('Callback URL must not target private networks')
+
+    return callback_url

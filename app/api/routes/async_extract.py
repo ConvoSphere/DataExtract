@@ -10,6 +10,7 @@ from app.core.auth import check_rate_limit, get_current_user
 from app.core.config import settings
 from app.core.exceptions import FileExtractorError, convert_to_http_exception
 from app.core.queue import get_job_queue
+from app.core.security import ensure_safe_callback_url
 from app.core.validation import validate_file_upload
 from app.extractors import is_format_supported
 from app.models.schemas import (
@@ -79,6 +80,16 @@ async def extract_file_async(
                 detail=f"Dateiformat '{Path(file.filename).suffix}' wird nicht unterstützt",
             )
 
+        # Callback URL validieren
+        try:
+            safe_callback_url = ensure_safe_callback_url(callback_url)
+        except ValueError as exc:
+            Path(file_info.get('temp_path', '')).unlink(missing_ok=True)
+            raise HTTPException(
+                status_code=400,
+                detail=str(exc),
+            ) from exc
+
         # Job-Queue abrufen
         queue = get_job_queue()
 
@@ -90,7 +101,7 @@ async def extract_file_async(
             include_structure=include_structure,
             include_images=include_images,
             include_media=include_media,
-            callback_url=callback_url,
+            callback_url=safe_callback_url,
             priority=priority,
         )
 
@@ -119,7 +130,11 @@ async def extract_file_async(
     summary='Job-Status abfragen',
     description='Gibt den aktuellen Status eines asynchronen Jobs zurück.',
 )
-async def get_job_status(job_id: str) -> JobStatus:
+async def get_job_status(
+    job_id: str,
+    _user: dict = Depends(get_current_user),
+    __: dict = Depends(check_rate_limit),
+) -> JobStatus:
     """
     Gibt den Status eines asynchronen Jobs zurück.
 
@@ -155,7 +170,11 @@ async def get_job_status(job_id: str) -> JobStatus:
     summary='Job abbrechen',
     description='Bricht einen asynchronen Job ab.',
 )
-async def cancel_job(job_id: str):
+async def cancel_job(
+    job_id: str,
+    _user: dict = Depends(get_current_user),
+    __: dict = Depends(check_rate_limit),
+):
     """
     Bricht einen asynchronen Job ab.
 
@@ -191,7 +210,10 @@ async def cancel_job(job_id: str):
     summary='Job-Statistiken',
     description='Gibt Statistiken über alle Jobs zurück.',
 )
-async def get_job_stats():
+async def get_job_stats(
+    _user: dict = Depends(get_current_user),
+    __: dict = Depends(check_rate_limit),
+):
     """
     Gibt Statistiken über alle Jobs zurück.
 
@@ -223,7 +245,11 @@ async def get_job_stats():
     summary='Alte Jobs bereinigen',
     description='Bereinigt alte, abgeschlossene Jobs.',
 )
-async def cleanup_old_jobs(max_age_hours: int = 24):
+async def cleanup_old_jobs(
+    max_age_hours: int = 24,
+    _user: dict = Depends(get_current_user),
+    __: dict = Depends(check_rate_limit),
+):
     """
     Bereinigt alte, abgeschlossene Jobs.
 
